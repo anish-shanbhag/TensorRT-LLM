@@ -1,5 +1,4 @@
 from dataclasses import dataclass
-from typing import Dict
 
 import torch
 
@@ -24,9 +23,9 @@ class LoadedWeights:
         for the weights to be reusable.
     """
 
-    tensors: Dict[str, torch.Tensor]
+    tensors: dict[str, torch.Tensor]
 
     @classmethod
     def from_model(cls, model: torch.nn.Module) -> "LoadedWeights":
         """Extract weight tensor references from a model (no copy)."""
-        return cls(tensors={name: param.data for name, param in model.named_parameters()})
+        return cls(tensors=model.state_dict())
