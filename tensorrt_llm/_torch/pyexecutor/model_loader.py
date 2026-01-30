@@ -261,13 +261,7 @@ class ModelLoader:
                 logger.info(
                     "Reusing pre-loaded GPU weights (skipping checkpoint load)")
                 # TODO: Add validation that parameter names/shapes match
-                for name, param in model.named_parameters():
-                    if name in loaded_weights.tensors:
-                        param.data = loaded_weights.tensors[name]
-                    else:
-                        raise KeyError(
-                            f"Weight '{name}' not found in loaded_weights. "
-                            "Ensure the model configuration is compatible.")
+                model.load_state_dict(loaded_weights.tensors, assign=True)
 
             elif use_meta_init:
                 # Allocate GPU tensors from meta tensors
