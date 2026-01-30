@@ -16,8 +16,8 @@ import torch
 import yaml
 from pydantic import AliasChoices, BaseModel
 from pydantic import Field as PydanticField
-from pydantic import (PrivateAttr, SkipJsonSchema, field_validator,
-                      model_validator)
+from pydantic import PrivateAttr, field_validator, model_validator
+from pydantic.json_schema import SkipJsonSchema
 from strenum import StrEnum
 from transformers import PreTrainedTokenizerBase
 
