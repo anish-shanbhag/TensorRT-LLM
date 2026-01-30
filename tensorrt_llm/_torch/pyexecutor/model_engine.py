@@ -206,7 +206,9 @@ class PyTorchModelEngine(ModelEngine):
                 lora_config=lora_config,
             )
             self.model, moe_load_balancer = self.model_loader.load(
-                checkpoint_dir=model_path, checkpoint_loader=checkpoint_loader)
+                checkpoint_dir=model_path,
+                checkpoint_loader=checkpoint_loader,
+                loaded_weights=llm_args.loaded_weights)
             if isinstance(moe_load_balancer, MoeLoadBalancer):
                 setattr(self, "moe_load_balancer", moe_load_balancer)
         else:
