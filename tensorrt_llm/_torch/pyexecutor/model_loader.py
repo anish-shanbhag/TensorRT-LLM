@@ -17,6 +17,7 @@ from tensorrt_llm.models.modeling_utils import QuantAlgo
 from tensorrt_llm.quantization.utils.fp4_utils import float4_e2m1x2
 
 from ...llmapi.llm_args import LoadFormat
+from ...llmapi.loaded_weights import LoadedWeights
 from ..model_config import ModelConfig
 from ..models import AutoModelForCausalLM
 from ..models.checkpoints.base_checkpoint_loader import BaseCheckpointLoader
@@ -216,6 +217,7 @@ class ModelLoader:
         self,
         checkpoint_dir: str,
         checkpoint_loader: BaseCheckpointLoader,
+        loaded_weights: Optional[LoadedWeights] = None,
     ):
         """
         Loads the model, its weights, and applies necessary configurations.
@@ -223,6 +225,9 @@ class ModelLoader:
         Args:
             checkpoint_dir: The directory of the model checkpoint.
             checkpoint_loader: The loader object for model checkpoints.
+            loaded_weights: Optional pre-loaded GPU weights to reuse instead of
+                loading from checkpoint. If provided, weights are assigned directly
+                to model parameters (zero-copy).
 
         Returns:
             The loaded and initialized PyTorch model.
@@ -233,12 +238,39 @@ class ModelLoader:
 
         with timing("Model init total"), maybe_create_moe_load_balancer(
                 config, self.mapping) as moe_load_balancer:
+
+            # Step 1: Create model skeleton (try meta init first)
+            config_copy = copy.deepcopy(config)
+            use_meta_init = False
             try:
-                # config will be modified in-place for some models, like Qwen2
-                config_copy = copy.deepcopy(config)
                 with MetaInitMode():
                     model = AutoModelForCausalLM.from_config(config_copy)
+                config = config_copy
+                use_meta_init = True
+            except Exception:
+                if loaded_weights is not None:
+                    raise  # Meta init required for loaded_weights
+                logger.info(
+                    f"Fallback to regular model init: {traceback.format_exc(limit=10)}\n"
+                )
+                model = AutoModelForCausalLM.from_config(config)
 
+            # Step 2: Populate weights
+            if loaded_weights is not None:
+                # Zero-copy assign existing GPU tensors
+                logger.info(
+                    "Reusing pre-loaded GPU weights (skipping checkpoint load)")
+                # TODO: Add validation that parameter names/shapes match
+                for name, param in model.named_parameters():
+                    if name in loaded_weights.tensors:
+                        param.data = loaded_weights.tensors[name]
+                    else:
+                        raise KeyError(
+                            f"Weight '{name}' not found in loaded_weights. "
+                            "Ensure the model configuration is compatible.")
+
+            elif use_meta_init:
+                # Allocate GPU tensors from meta tensors
                 memo = dict()
 
                 def init_meta_tensor(t: torch.Tensor):
@@ -249,23 +281,23 @@ class ModelLoader:
                     return memo[t]
 
                 model._apply(init_meta_tensor)
-                config = config_copy
+                del memo
+                model.to("cuda")
 
-            except Exception:
+            else:
+                # Regular init - model already has real tensors
+                model.to("cuda")
+
+            if loaded_weights is None:
+                rank_model_storage = get_rank_model_storage(model)
                 logger.info(
-                    f"Fallback to regular model init: {traceback.format_exc(limit=10)}\n"
+                    f"Use {rank_model_storage / (1024**3):.2f} GB for model weights."
                 )
-                model = AutoModelForCausalLM.from_config(config)
-            finally:
-                if 'memo' in locals():
-                    del memo
 
-            model.to("cuda")
-            rank_model_storage = get_rank_model_storage(model)
-            logger.info(
-                f"Use {rank_model_storage / (1024**3):.2f} GB for model weights."
-            )
-            if load_format == LoadFormat.AUTO:
+            # Step 3: Load weights from checkpoint (skip if using loaded_weights)
+            if loaded_weights is not None:
+                pass  # Already populated above
+            elif load_format == LoadFormat.AUTO:
                 if hasattr(model, 'llm_checkpoint_dir'):
                     weights = checkpoint_loader.load_weights(
                         model.llm_checkpoint_dir, mapping=self.mapping)
