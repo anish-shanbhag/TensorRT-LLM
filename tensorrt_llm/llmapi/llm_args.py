@@ -24,6 +24,7 @@ try:
 except ImportError:
     PlacementGroup = None
 
+from tensorrt_llm.llmapi.loaded_weights import LoadedWeights
 from tensorrt_llm.lora_helper import (LoraConfig,
                                       get_default_trtllm_modules_to_hf_modules)
 
@@ -3046,6 +3047,14 @@ class TorchLlmArgs(BaseLlmArgs):
     layer_wise_benchmarks_config: LayerwiseBenchmarksConfig = Field(
         default_factory=LayerwiseBenchmarksConfig,
         description="Configuration for layer-wise benchmarks calibration.",
+        status="prototype")
+
+    loaded_weights: Optional[LoadedWeights] = Field(
+        default=None,
+        exclude=True,  # Don't serialize
+        description=
+        "Pre-loaded GPU weights to reuse instead of loading from checkpoint. "
+        "Use LLM.get_loaded_weights() to extract weights from an existing LLM instance.",
         status="prototype")
 
     @property
