@@ -239,7 +239,7 @@ class ModelLoader:
         with timing("Model init total"), maybe_create_moe_load_balancer(
                 config, self.mapping) as moe_load_balancer:
 
-            # Step 1: Create model skeleton (try meta init first)
+            # Create model skeleton (try meta init first)
             config_copy = copy.deepcopy(config)
             use_meta_init = False
             try:
@@ -255,12 +255,11 @@ class ModelLoader:
                 )
                 model = AutoModelForCausalLM.from_config(config)
 
-            # Step 2: Populate weights
+            # Populate weights
             if loaded_weights is not None:
                 # Zero-copy assign existing GPU tensors
                 logger.info(
                     "Reusing pre-loaded GPU weights (skipping checkpoint load)")
-                # TODO: Add validation that parameter names/shapes match
                 model.load_state_dict(loaded_weights.tensors, assign=True)
 
             elif use_meta_init:
@@ -288,7 +287,7 @@ class ModelLoader:
                     f"Use {rank_model_storage / (1024**3):.2f} GB for model weights."
                 )
 
-            # Step 3: Load weights from checkpoint (skip if using loaded_weights)
+            # Load weights from checkpoint (skip if using loaded_weights)
             if loaded_weights is not None:
                 pass  # Already populated above
             elif load_format == LoadFormat.AUTO:
