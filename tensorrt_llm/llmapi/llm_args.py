@@ -8,14 +8,16 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from enum import Enum, EnumMeta
 from pathlib import Path
-from typing import (Any, ClassVar, Dict, List, Literal, Optional, Set, Tuple,
-                    Type, TypeAlias, TypeVar, Union, get_args, get_origin)
+from typing import (Annotated, Any, ClassVar, Dict, List, Literal, Optional,
+                    Set, Tuple, Type, TypeAlias, TypeVar, Union, get_args,
+                    get_origin)
 
 import torch
 import yaml
 from pydantic import AliasChoices, BaseModel
 from pydantic import Field as PydanticField
-from pydantic import PrivateAttr, field_validator, model_validator
+from pydantic import (PrivateAttr, SkipJsonSchema, field_validator,
+                      model_validator)
 from strenum import StrEnum
 from transformers import PreTrainedTokenizerBase
 
@@ -3049,13 +3051,14 @@ class TorchLlmArgs(BaseLlmArgs):
         description="Configuration for layer-wise benchmarks calibration.",
         status="prototype")
 
-    loaded_weights: Optional[LoadedWeights] = Field(
-        default=None,
-        exclude=True,  # Don't serialize
-        description=
-        "Pre-loaded GPU weights to reuse instead of loading from checkpoint. "
-        "Use LLM.get_loaded_weights() to extract weights from an existing LLM instance.",
-        status="prototype")
+    loaded_weights: Annotated[
+        Optional[LoadedWeights], SkipJsonSchema()] = Field(
+            default=None,
+            exclude=True,
+            description=
+            "Pre-loaded GPU weights to reuse instead of loading from checkpoint. "
+            "Use LLM.get_loaded_weights() to extract weights from an existing LLM instance.",
+            status="prototype")
 
     @property
     def quant_config(self) -> QuantConfig:
