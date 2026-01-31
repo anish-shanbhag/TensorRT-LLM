@@ -716,10 +716,6 @@ class CachedModelLoader:
             self._hf_model_dir = self._download_hf_model_if_needed(
                 self.model_loader.model_obj, revision=self.llm_args.revision)
 
-            # Currently, this is to make updated quant_config visible by llm.args.quant_config
-            # TODO: Unify the logics with those in tensorrt_llm/_torch/model_config.py
-            self.model_loader._update_from_hf_quant_config()
-
             return None, self._hf_model_dir
 
         if self.model_loader.model_obj.is_hub_model:
