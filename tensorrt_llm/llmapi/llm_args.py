@@ -817,8 +817,17 @@ class LayerwiseBenchmarksConfig(StrictBaseModel):
 
 class MedusaDecodingConfig(DecodingBaseConfig):
     decoding_type: Literal["Medusa"] = "Medusa"
-    medusa_choices: Optional[List[List[int]]] = None
-    num_medusa_heads: Optional[int] = None
+    medusa_choices: Optional[List[List[int]]] = Field(
+        default=None,
+        description=
+        "Tree structure for Medusa draft token generation. Each sublist represents a path in the tree where elements are token indices at each level. "
+        "For example, [[0], [0, 0], [1], [0, 1]] defines multiple branches.")
+    num_medusa_heads: Optional[int] = Field(
+        default=None,
+        description=
+        "Number of Medusa prediction heads to use. Each head predicts a draft token at a different position in parallel. "
+        "If not specified, defaults to the 'medusa_num_heads' value from the Medusa model's config.json."
+    )
 
     @model_validator(mode="after")
     def set_max_total_draft_tokens(self):
@@ -1002,13 +1011,40 @@ class Eagle3DecodingConfig(EagleDecodingConfig):
 
 class SaveHiddenStatesDecodingConfig(DecodingBaseConfig):
     decoding_type: Literal["SaveState"] = "SaveState"
-    output_directory: str
-    write_interval: int = 20
-    file_prefix: str = "data"
-    eagle3_layers_to_capture: Optional[Set[int]] = None
+    output_directory: str = Field(
+        description=
+        "Directory path where hidden states data files will be saved. The directory is created if it does not exist."
+    )
+    write_interval: int = Field(
+        default=20,
+        description=
+        "Number of requests to process before writing accumulated hidden states to disk. Lower values write more frequently but may impact performance."
+    )
+    file_prefix: str = Field(
+        default="data",
+        description=
+        "Prefix for output filenames. Files are saved as '<file_prefix>_<iteration>.pt' containing input_ids and hidden_state tensors."
+    )
+    eagle3_layers_to_capture: Optional[Set[int]] = Field(
+        default=None,
+        description=
+        "Set of target model layer indices to capture hidden states from for EAGLE3 draft model training. "
+        "Use -1 to indicate the final post-norm hidden state. If not provided, defaults to capturing 3 intermediate layers "
+        "plus the post-norm hidden state. When provided, -1 is automatically added if not present."
+    )
 
-    max_total_draft_tokens: Optional[int] = Field(default=1, init=False)
-    eagle_choices: Optional[List[List[int]]] = Field(default=None, init=False)
+    max_total_draft_tokens: Optional[int] = Field(
+        default=1,
+        init=False,
+        description=
+        "Internal field, not user-configurable. Fixed to 1 since this mode captures hidden states without draft token generation."
+    )
+    eagle_choices: Optional[List[List[int]]] = Field(
+        default=None,
+        init=False,
+        description=
+        "Internal field, not user-configurable. Always None since this mode does not use tree-based draft token structures."
+    )
 
     _last_hidden_in_save: bool = PrivateAttr(default=True)
 
@@ -1047,8 +1083,17 @@ class SaveHiddenStatesDecodingConfig(DecodingBaseConfig):
 class UserProvidedDecodingConfig(DecodingBaseConfig):
     decoding_type: Literal["User_Provided"] = "User_Provided"
     # Cannot use real type annotations due to circular imports
-    drafter: object  # Type is Drafter
-    resource_manager: object = None  # Type is Optional[ResourceManager]
+    drafter: object = Field(
+        description=
+        "User-provided Drafter instance implementing the prepare_draft_tokens() method for custom draft token generation. "
+        "See tensorrt_llm/_torch/speculative/drafter.py for the Drafter base class interface."
+    )  # Type is Drafter
+    resource_manager: object = Field(
+        default=None,
+        description=
+        "Optional user-provided BaseResourceManager instance for managing resources (memory, caches) during drafting. "
+        "Called to prepare/free resources before/after target model forward passes."
+    )  # Type is Optional[ResourceManager]
 
     @model_validator(mode="after")
     def set_max_total_draft_tokens(self):
@@ -1143,8 +1188,13 @@ class MTPDecodingConfig(DecodingBaseConfig):
 
     # TODO: remove this after distinguishing `max_draft_len` and `num_nextn_predict_layers`
     # Now we need a flag when MTPDecodingConfig is updated by PyTorchModelEngine.
-    num_nextn_predict_layers_from_model_config: int = Field(default=1,
-                                                            init=False)
+    num_nextn_predict_layers_from_model_config: int = Field(
+        default=1,
+        init=False,
+        description=
+        "Internal field storing MTP layer count from model config. Used to decide decoding mode: "
+        "when model has 1 layer and use_mtp_vanilla=False, uses faster EAGLE-style MTP instead of vanilla MTP."
+    )
 
     begin_thinking_phase_token: int = Field(
         default=128798,
