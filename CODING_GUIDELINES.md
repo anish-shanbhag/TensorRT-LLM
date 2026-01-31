@@ -409,7 +409,7 @@ foo.SomeClass()
 When defining any user-facing configuration classes (particularly `LlmArgs` or any class used in its fields), **always** use Pydantic classes rather than dataclasses or vanilla classes.
 
 **Model Structure:**
-- Inherit from `StrictBaseModel` (which sets `extra="forbid"`) to catch typos in field names
+- Inherit from `StrictBaseModel` (which sets `extra="forbid"`) to fail fast when users specify invalid field names
 - Use [discriminated unions](https://docs.pydantic.dev/latest/concepts/unions/#discriminated-unions) when a field needs to accept one of several possible config classes (e.g. `speculative_config` accepts any of `EagleDecodingConfig`, `MedusaDecodingConfig`, etc.)
 - **Do not define `__init__` methods** - this bypasses Pydantic's validation and type coercion, and can cause subtle bugs with model inheritance. Instead:
   - For validation logic, use `@field_validator` or `@model_validator`
