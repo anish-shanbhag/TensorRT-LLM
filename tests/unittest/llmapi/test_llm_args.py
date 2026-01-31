@@ -916,28 +916,33 @@ def _get_all_pydantic_models_from_llm_args():
 # Keys are Pydantic model classes, values are lists of field names.
 EXEMPT_FIELDS: dict[type, list[str]] = {
     BaseLlmArgs: [
-        "batched_logits_processor",  # arbitrary ABC type
+        "batched_logits_processor",  # abstract base class type
         "decoding_config",  # deprecated field, typed as object
         "model_kwargs",  # typed as Dict[str, Any] for flexibility
-        "mpi_session",  # arbitrary ABC type
+        "mpi_session",  # abstract base class type
         "tokenizer",  # uses PreTrainedTokenizerBase
     ],
     TorchLlmArgs: [
-        "checkpoint_loader",  # TODO: typed as object due to circular import
+        "checkpoint_loader",  # abstract base class type
     ],
     AutoDeployLlmArgs: [
-        "draft_checkpoint_loader",  # object due to circular import
+        "draft_checkpoint_loader",  # typed as object due to circular import
         "transforms",  # typed as Dict[str, Dict[str, Any]] for flexibility
         "model_kwargs",  # typed as Dict[str, Any] for flexibility
         "tokenizer_kwargs",  # typed as Dict[str, Any] for flexibility
     ],
     UserProvidedDecodingConfig: [
-        "drafter",  # TODO: typed as object due to circular import (actual type: Drafter)
-        "resource_manager",  # TODO: typed as object due to circular import (actual type: ResourceManager)
+        "drafter",  # abstract base class type
+        "resource_manager",  # abstract base class type
     ],
     MoeConfig: ["load_balancer"],  # allows multiple types including dict
     RayPlacementConfig: ["placement_groups"],  # contains Ray-specific types
 }
+
+
+def _get_qualified_name(cls: type) -> str:
+    """Return the fully qualified name of a class."""
+    return f"{cls.__module__}.{cls.__qualname__}"
 
 
 class TestPydanticBestPractices:
@@ -1041,7 +1046,8 @@ class TestPydanticBestPractices:
                 if field_info.description is None or field_info.description.strip(
                 ) == "":
                     violations.append(
-                        f"{cls.__name__}.{field_name}: missing description")
+                        f"{_get_qualified_name(cls)}.{field_name}: missing description"
+                    )
 
         if violations:
             pytest.fail(
@@ -1063,7 +1069,8 @@ class TestPydanticBestPractices:
                 is_compatible, reason = self._is_allowed_type(
                     field_info.annotation, cls, field_name)
                 if not is_compatible:
-                    violations.append(f"{cls.__name__}.{field_name}: {reason}")
+                    violations.append(
+                        f"{_get_qualified_name(cls)}.{field_name}: {reason}")
 
         if violations:
             pytest.fail(
@@ -1092,7 +1099,8 @@ class TestPydanticBestPractices:
             for method_name, suggestion in self._FORBIDDEN_METHODS.items():
                 if method_name in cls.__dict__:
                     violations.append(
-                        f"{cls.__name__}.{method_name}(): {suggestion}")
+                        f"{_get_qualified_name(cls)}.{method_name}(): {suggestion}"
+                    )
 
         if violations:
             pytest.fail(
@@ -1114,7 +1122,7 @@ class TestPydanticBestPractices:
                 if isinstance(default, (list, dict, set)):
                     type_name = type(default).__name__
                     violations.append(
-                        f"{cls.__name__}.{field_name}: uses mutable default {type_name}. "
+                        f"{_get_qualified_name(cls)}.{field_name}: uses mutable default {type_name}. "
                         f"Use Field(default_factory={type_name}) instead.")
 
         if violations:
@@ -1123,3 +1131,30 @@ class TestPydanticBestPractices:
                 "\n".join(violations) +
                 "\n\nMutable defaults are shared across instances and cause bugs. "
                 "Use Field(default_factory=...) instead.")
+
+    def test_no_custom_init_methods(self):
+        """Test that LlmArgs and all nested Pydantic models do not define custom __init__ methods.
+
+        Pydantic models should not override __init__ because:
+        - It bypasses Pydantic's validation and type coercion
+        - It can cause subtle bugs with model inheritance
+
+        There are better alternatives for all common use cases:
+        - For validation: use @field_validator or @model_validator
+        - For post-validation initialization: use model_post_init()
+        - For custom construction patterns: use classmethods (e.g. from_yaml())
+
+        See: https://docs.pydantic.dev/latest/concepts/models/#defining-a-custom-__init__
+        """
+        violations = []
+
+        for cls in _get_all_pydantic_models_from_llm_args():
+            if "__init__" in cls.__dict__:
+                violations.append(_get_qualified_name(cls))
+
+        if violations:
+            pytest.fail(
+                f"The following Pydantic models define custom __init__ methods:\n"
+                + "\n".join(violations) +
+                "\n\nThese should be replaced with alternatives like validators, model_post_init, or classmethods. See this test's docstring for more details."
+            )
