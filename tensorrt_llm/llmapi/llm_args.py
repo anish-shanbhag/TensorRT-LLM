@@ -58,9 +58,8 @@ from ..models.modeling_utils import (PretrainedConfig, QuantAlgo, QuantConfig,
                                      SpeculativeDecodingMode)
 from ..sampling_params import BatchedLogitsProcessor
 from .build_cache import BuildCacheConfig
-from .mpi_session import MpiSession
 from .tokenizer import TokenizerBase, tokenizer_factory
-from .utils import generate_api_docs_as_docstring
+from .utils import generate_api_docs_as_docstring, get_type_repr
 
 TypeBaseModel = TypeVar("T", bound=BaseModel)
 
@@ -1995,8 +1994,12 @@ class BaseLlmArgs(StrictBaseModel):
         "Guided decoding backend. llguidance is supported in PyTorch backend only."
     )
 
-    batched_logits_processor: Optional[BatchedLogitsProcessor] = Field(
-        default=None, description="Batched logits processor.")
+    batched_logits_processor: Optional[object] = Field(
+        default=None,
+        description="Batched logits processor.",
+        json_schema_extra={
+            "type": f"Optional[{get_type_repr(BatchedLogitsProcessor)}]"
+        })
 
     iter_stats_max_iterations: Optional[int] = Field(
         default=None,
@@ -2080,9 +2083,10 @@ class BaseLlmArgs(StrictBaseModel):
         deprecated="Use speculative_config instead.",
     )
 
-    mpi_session: Optional[MpiSession] = Field(
+    mpi_session: Optional[object] = Field(
         default=None,
         description="The optional MPI session to use for this LLM instance.",
+        json_schema_extra={"type": "Optional[MpiSession]"},
         exclude=True,
         alias="_mpi_session")
 

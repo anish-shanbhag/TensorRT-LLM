@@ -916,10 +916,10 @@ def _get_all_pydantic_models_from_llm_args():
 # Keys are Pydantic model classes, values are lists of field names.
 EXEMPT_FIELDS: dict[type, list[str]] = {
     BaseLlmArgs: [
-        "batched_logits_processor",  # ABC type (BatchedLogitsProcessor)
+        "batched_logits_processor",  # arbitrary ABC type
         "decoding_config",  # deprecated field, typed as object
         "model_kwargs",  # typed as Dict[str, Any] for flexibility
-        "mpi_session",  # ABC type (MpiSession)
+        "mpi_session",  # arbitrary ABC type
     ],
     TorchLlmArgs: [
         "checkpoint_loader",  # TODO: typed as object due to circular import
