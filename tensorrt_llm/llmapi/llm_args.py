@@ -466,7 +466,7 @@ class Nvfp4GemmConfig(StrictBaseModel):
     Configuration for NVFP4 GEMM backend selection.
     """
     allowed_backends: List[Nvfp4Backend] = Field(
-        default=['cutlass', 'cublaslt', 'cuda_core'],
+        default_factory=lambda: ['cutlass', 'cublaslt', 'cuda_core'],
         min_length=1,
         description="List of backends to consider for auto-selection. "
         "Default excludes 'cutedsl' for faster build time. "
