@@ -28,7 +28,7 @@ except ImportError:
 from tensorrt_llm.lora_helper import (LoraConfig,
                                       get_default_trtllm_modules_to_hf_modules)
 
-from .._utils import mpi_disabled, mpi_rank
+from .._utils import mpi_rank
 
 # yapf: disable
 # isort: off
@@ -1040,19 +1040,19 @@ class SaveHiddenStatesDecodingConfig(DecodingBaseConfig):
 
     _last_hidden_in_save: bool = PrivateAttr(default=True)
 
-    @model_validator(mode="after")
-    def set_last_hidden_in_save(self):
+    def model_post_init(self, __context):
+        # TODO: using model_post_init here instead of model_validator to avoid re-validation
+        # issues. This ensures we only run the logic here once per object creation.
+        # Ideally, the logic should be changed to be idempotent so that this model can be
+        # serialized / deserialized without issues.
         if self.eagle3_layers_to_capture is None:
             self._last_hidden_in_save = False
-            return self
-        if len(self.eagle3_layers_to_capture) == 0:
+        elif len(self.eagle3_layers_to_capture) == 0:
             raise ValueError(
                 "eagle3_layers_to_capture must be non-empty if provided")
-        self._last_hidden_in_save = True
-        if -1 not in self.eagle3_layers_to_capture:
+        elif -1 not in self.eagle3_layers_to_capture:
             self._last_hidden_in_save = False
             self.eagle3_layers_to_capture.add(-1)
-        return self
 
     @functools.cached_property
     def spec_dec_mode(self):
@@ -2218,6 +2218,7 @@ class BaseLlmArgs(StrictBaseModel):
         """Normalize certain fields to their declared default values in case a user explicitly sets them to None.
 
         This is necessary because downstream code expects these fields to be non-None.
+        At the same time, we still need to accept None as a valid value to avoid a breaking change.
         """
         for field_name in (
                 "max_batch_size",
@@ -3145,14 +3146,6 @@ class TorchLlmArgs(BaseLlmArgs):
             )
         return self
 
-    @model_validator(mode='after')
-    def set_orchestrator_type_for_mpi_disabled(self) -> 'TorchLlmArgs':
-        if mpi_disabled():
-            self.orchestrator_type = "ray"
-        elif self.orchestrator_type == "ray":
-            os.environ["TLLM_DISABLE_MPI"] = "1"
-        return self
-
     def get_executor_config(
         self,
         _hf_model_dir: Optional[Path] = None,
@@ -3183,12 +3176,10 @@ def update_llm_args_with_extra_dict(
         "build_config": BuildConfig,
         "decoding_config": DecodingConfig,
         "enable_build_cache": BuildCacheConfig,
-        "speculative_config": DecodingBaseConfig,
         "lora_config": LoraConfig,
         "moe_config": MoeConfig,
         "nvfp4_gemm_config": Nvfp4GemmConfig,
         "attention_dp_config": AttentionDpConfig,
-        "sparse_attention_config": BaseSparseAttentionConfig,
         "kv_cache_config": KvCacheConfig,
     }
     for field_name, field_type in field_mapping.items():
@@ -3198,6 +3189,24 @@ def update_llm_args_with_extra_dict(
             logger.warning(f"Overriding {field_name} {extra_llm_str}")
 
     llm_args = llm_args | llm_args_dict
+
+    # build_config only works for TensorRT backend, it will be ignored in PyTorch backend
+    if "build_config" in llm_args:
+        # Ensure build_config is a BuildConfig object, not a dict
+        if isinstance(llm_args["build_config"], dict):
+            llm_args["build_config"] = BuildConfig(**llm_args["build_config"])
+
+        for key in [
+                "max_batch_size",
+                "max_num_tokens",
+                "max_beam_width",
+                "max_seq_len",
+        ]:
+            if key in llm_args_dict:
+                logger.info(
+                    f"Overriding {key} from build_config to {llm_args_dict[key]}"
+                )
+                setattr(llm_args["build_config"], key, llm_args_dict[key])
 
     return llm_args
 

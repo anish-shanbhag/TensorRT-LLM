@@ -14,6 +14,7 @@ import transformers
 from tqdm import tqdm
 from transformers import PreTrainedTokenizerBase
 
+from tensorrt_llm._torch.model_config import ModelConfig
 from tensorrt_llm._utils import mpi_disabled
 from tensorrt_llm.inputs.data import TextPrompt
 from tensorrt_llm.inputs.multimodal import MultimodalInput, MultimodalParams
@@ -1078,6 +1079,12 @@ class _TorchLLM(BaseLLM):
                          tokenizer_revision,
                          backend=backend,
                          **kwargs)
+
+    @property
+    def model_config(self) -> Optional[ModelConfig]:
+        if hasattr(self, "_executor") and self._executor is not None:
+            return self._executor.model_engine.model.model_config
+        return None
 
     @set_api_status("prototype")
     def _collective_rpc(self,
