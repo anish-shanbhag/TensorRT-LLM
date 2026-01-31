@@ -2,7 +2,7 @@ import tempfile
 from dataclasses import is_dataclass
 from enum import Enum
 from pathlib import Path
-from typing import Any, get_args, get_origin
+from typing import Any, Literal, get_args, get_origin
 
 import pydantic_core
 import pytest
@@ -999,7 +999,7 @@ class TestPydanticBestPractices:
 
         # Recursively check generic type arguments for disallowed types
         origin = get_origin(annotation)
-        if origin is not None:
+        if origin is not None and origin is not Literal:
             for arg in get_args(annotation):
                 if arg is type(None):
                     continue
@@ -1071,7 +1071,7 @@ class TestPydanticBestPractices:
     }
 
     def test_no_manual_serialization_or_validation_methods(self):
-        """Test that no Pydantic models define manual serialization/validation methods."""
+        """Test that LlmArgs and all nested Pydantic models do not define manual serialization/validation methods."""
         violations = []
 
         for cls in _get_all_pydantic_models_from_llm_args():
@@ -1088,11 +1088,7 @@ class TestPydanticBestPractices:
                 "See: https://docs.pydantic.dev/latest/concepts/serialization/")
 
     def test_no_mutable_default_values(self):
-        """Test that no fields use mutable default values directly.
-
-        Mutable defaults like [] or {} are shared across instances and cause bugs.
-        Use Field(default_factory=list) or Field(default_factory=dict) instead.
-        """
+        """Test that LlmArgs and all nested Pydantic models do not use mutable default values directly."""
         violations = []
 
         for cls in _get_all_pydantic_models_from_llm_args():

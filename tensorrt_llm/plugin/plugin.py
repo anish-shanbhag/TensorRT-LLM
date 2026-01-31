@@ -25,7 +25,7 @@ from typing import (Any, List, Literal, Optional, Tuple, Union, get_args,
 
 import tensorrt as trt
 from pydantic import (BaseModel, ConfigDict, Field, PrivateAttr, ValidationInfo,
-                      field_validator)
+                      field_validator, model_validator)
 
 from .._ipc_utils import IpcMemory, can_access_peer
 from .._utils import get_sm_version
@@ -364,7 +364,8 @@ class PluginConfig(BaseModel):
                             bool) or field_name == "paged_kv_cache":
                 setattr(self, field_name, False)
 
-    def validate(self):
+    @model_validator(mode="after")
+    def _validate_sm_compatibility(self) -> "PluginConfig":
         unsupported_plugins = {
             # bert_attention_plugin is handled within BertAttention
             100: [
@@ -378,8 +379,9 @@ class PluginConfig(BaseModel):
             for plugin in unsupported_plugins[sm]:
                 val = getattr(self, plugin, None)
                 if val is not None and val != False:
-                    raise NotImplementedError(
+                    raise ValueError(
                         f"{plugin}={val} is not supported on SM {sm}.")
+        return self
 
     @property
     def context_fmha_type(self):
