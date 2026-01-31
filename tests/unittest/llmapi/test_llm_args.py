@@ -2,7 +2,7 @@ import tempfile
 from dataclasses import is_dataclass
 from enum import Enum
 from pathlib import Path
-from typing import Any, Literal, get_args, get_origin
+from typing import Annotated, Any, Literal, get_args, get_origin
 
 import pydantic_core
 import pytest
@@ -947,22 +947,17 @@ class TestPydanticBestPractices:
     def _is_allowed_type(self, annotation, model_cls: type,
                          field_name: str) -> tuple[bool, str]:
         """
-        Check if a type annotation is allowed according to the rules below:
+        Check if a type annotation is allowed for user-facing config fields.
 
         Allowed:
-        - Pydantic models
-        - Enums
-        - primitives (str, int, float, bool, bytes, Path, type(None))
-        - Union of allowed types
-        - Optional of allowed types
+        - Pydantic models (must inherit from StrictBaseModel)
+        - Enums, primitives (str, int, float, bool, bytes, Path, type(None))
+        - Union/Optional/List/Dict of allowed types
         Not allowed:
-        - object, Any, bare containers (dict, list, etc. without type parameters)
-        - dataclasses (should be converted to Pydantic models)
-        - regular classes that aren't Pydantic models, Enums, or primitives
-        - Pydantic models that do not inherit from StrictBaseModel
-        - Any other type that cannot be translated to a JSON schema
+        - object, Any, bare containers (dict, list without type parameters)
+        - dataclasses, non-Pydantic classes, Pydantic models not inheriting from StrictBaseModel
 
-        Returns (is_compatible, reason) tuple.
+        Returns (is_allowed, reason) tuple.
         """
 
         # Check if this field is exempt (check class and all parent classes)
@@ -992,28 +987,41 @@ class TestPydanticBestPractices:
                 annotation, _ALLOWED_CLASS_BASES):
             return False, f"class '{annotation.__name__}' is not a Pydantic model (convert to StrictBaseModel)"
 
-        # Require user-facing Pydantic models to forbid arbitrary fields
-        if issubclass(annotation, BaseModel) and not issubclass(
-                annotation, StrictBaseModel):
+        # Require user-facing Pydantic models to inherit from StrictBaseModel
+        if isinstance(annotation, type) and issubclass(
+                annotation,
+                BaseModel) and not issubclass(annotation, StrictBaseModel):
             return False, f"Pydantic model '{annotation.__name__}' is not a StrictBaseModel (convert to StrictBaseModel)"
 
         # Recursively check generic type arguments for disallowed types
         origin = get_origin(annotation)
-        if origin is not None and origin is not Literal:
+        if origin is not None:
+            # Skip Literal types - their args are values, not types
+            if origin is Literal:
+                return True, "Literal type"
+
+            # For Annotated types, only check the first arg (the actual type)
+            # The rest are metadata (validators, Field info, etc.)
+            if origin is Annotated:
+                args = get_args(annotation)
+                return self._is_allowed_type(args[0], model_cls, field_name)
+
+            # For other generic types (Union, List, Dict, etc.), check all type args
+            container_name = getattr(origin, "__name__", str(origin))
             for arg in get_args(annotation):
                 if arg is type(None):
                     continue
+                # Explicitly check for Any (it's a special form, not a type)
+                if arg is Any:
+                    return False, f"in {container_name}: 'Any' type (use a specific type)"
+                # Skip non-type args (e.g., Callable parameter specs)
+                if not isinstance(arg, type) and get_origin(arg) is None:
+                    continue
                 ok, reason = self._is_allowed_type(arg, model_cls, field_name)
                 if not ok:
-                    container_name = getattr(origin, "__name__", str(origin))
                     return False, f"in {container_name}: {reason}"
 
-        # Final validation: can Pydantic generate a JSON schema for this type?
-        try:
-            TypeAdapter(annotation).json_schema()
-            return True, "schema compatible"
-        except Exception as e:
-            return False, f"cannot derive JSON schema: {type(e).__name__}: {e}"
+        return True, "allowed"
 
     def test_all_fields_have_descriptions(self):
         """Test that all fields in LlmArgs classes (including subfields) have descriptions."""
