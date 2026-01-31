@@ -15,7 +15,9 @@
 
 from typing import Dict, List, Literal, Optional
 
-from pydantic import BaseModel, Field
+from pydantic import Field
+
+from tensorrt_llm.llmapi.utils import StrictBaseModel
 
 
 def get_missing_qkv_modules_from_lora_modules(
@@ -79,7 +81,7 @@ def use_lora(
             f"Unsupported lora_ckpt_source: {lora_config.lora_ckpt_source}")
 
 
-class LoraConfig(BaseModel):
+class LoraConfig(StrictBaseModel):
     lora_dir: List[str] = Field(
         default_factory=list,
         description="List of directories containing LoRA adapter checkpoints. "
