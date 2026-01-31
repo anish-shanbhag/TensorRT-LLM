@@ -1024,6 +1024,11 @@ class TestPydanticBestPractices:
                 if field_name.startswith("_"):
                     # Skip private / non user-facing fields
                     continue
+                # Skip discriminator fields (single-value Literals)
+                annotation = field_info.annotation
+                if get_origin(annotation) is Literal and len(
+                        get_args(annotation)) == 1:
+                    continue
                 if field_info.description is None or field_info.description.strip(
                 ) == "":
                     violations.append(
