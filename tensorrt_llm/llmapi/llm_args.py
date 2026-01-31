@@ -59,7 +59,8 @@ from ..models.modeling_utils import (PretrainedConfig, QuantAlgo, QuantConfig,
 from ..sampling_params import BatchedLogitsProcessor
 from .build_cache import BuildCacheConfig
 from .tokenizer import TokenizerBase, tokenizer_factory
-from .utils import generate_api_docs_as_docstring, get_type_repr
+from .utils import (StrictBaseModel, generate_api_docs_as_docstring,
+                    get_type_repr)
 
 TypeBaseModel = TypeVar("T", bound=BaseModel)
 
@@ -92,15 +93,6 @@ def Field(default: Any = ...,
         kwargs['json_schema_extra'] = json_schema_extra
 
     return PydanticField(default, **kwargs)
-
-
-class StrictBaseModel(BaseModel):
-    """
-    A base model that forbids arbitrary fields.
-    """
-
-    class Config:
-        extra = "forbid"  # globally forbid arbitrary fields
 
 
 class CudaGraphConfig(StrictBaseModel):

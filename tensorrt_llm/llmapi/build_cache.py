@@ -10,11 +10,12 @@ from pathlib import Path
 from typing import Any, List, Optional
 
 import filelock
-from pydantic import BaseModel, Field, model_validator
+from pydantic import Field, model_validator
 
 import tensorrt_llm
 from tensorrt_llm.builder import BuildConfig
-from tensorrt_llm.llmapi.utils import enable_llm_debug, print_colored
+from tensorrt_llm.llmapi.utils import (StrictBaseModel, enable_llm_debug,
+                                       print_colored)
 from tensorrt_llm.logger import logger
 
 
@@ -29,7 +30,7 @@ def get_build_cache_config_from_env() -> tuple[bool, str]:
     return build_cache_enabled, build_cache_root
 
 
-class BuildCacheConfig(BaseModel):
+class BuildCacheConfig(StrictBaseModel):
     """
     Configuration for the build cache.
 

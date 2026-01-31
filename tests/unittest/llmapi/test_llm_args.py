@@ -920,6 +920,7 @@ EXEMPT_FIELDS: dict[type, list[str]] = {
         "decoding_config",  # deprecated field, typed as object
         "model_kwargs",  # typed as Dict[str, Any] for flexibility
         "mpi_session",  # arbitrary ABC type
+        "tokenizer",  # uses PreTrainedTokenizerBase
     ],
     TorchLlmArgs: [
         "checkpoint_loader",  # TODO: typed as object due to circular import
@@ -978,7 +979,7 @@ class TestPydanticBestPractices:
 
         # Check for dataclasses (should use Pydantic models instead)
         if isinstance(annotation, type) and is_dataclass(annotation):
-            return False, f"dataclass '{annotation.__name__}' (convert to Pydantic BaseModel)"
+            return False, f"class '{annotation.__name__}' is a dataclass (convert to a Pydantic StrictBaseModel instead)"
 
         # Check for regular classes that aren't Pydantic models, enums, or primitives
         _ALLOWED_CLASS_BASES = (BaseModel, Enum, str, int, float, bool, bytes,
