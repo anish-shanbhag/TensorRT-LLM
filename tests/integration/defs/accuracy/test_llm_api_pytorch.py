@@ -91,7 +91,7 @@ class TestLlama3_1_8B(LlmapiAccuracyTestHarness):
     def test_nvfp4(self):
         model_path = f"{llm_models_root()}/nvfp4-quantized/Meta-Llama-3.1-8B"
         with LLM(model_path) as llm:
-            assert llm.model_config.quant_config.quant_algo == QuantAlgo.NVFP4
+            assert llm.args.quant_config.quant_algo == QuantAlgo.NVFP4
             task = CnnDailymail(self.MODEL_NAME)
             task.evaluate(llm)
             task = MMLU(self.MODEL_NAME)
@@ -105,7 +105,7 @@ class TestLlama3_1_8B(LlmapiAccuracyTestHarness):
                 pytest.skip(
                     f"test_nvfp4_with_norm_quant supports SM 100 and 103 only")
             monkeypatch.setenv("TRTLLM_DISABLE_NVFP4_LAYERNORM_FUSION", "0")
-            assert llm.model_config.quant_config.quant_algo == QuantAlgo.NVFP4
+            assert llm.args.quant_config.quant_algo == QuantAlgo.NVFP4
             task = CnnDailymail(self.MODEL_NAME)
             task.evaluate(llm)
             task = MMLU(self.MODEL_NAME)
@@ -120,7 +120,7 @@ class TestLlama3_1_8B(LlmapiAccuracyTestHarness):
         # The behavior is due to perf considerations, while both paths need to be tested.
         with LLM(f"{llm_models_root()}/nvfp4-quantized/Meta-Llama-3.1-8B",
                  stream_interval=stream_interval) as llm:
-            assert llm.model_config.quant_config.quant_algo == QuantAlgo.NVFP4
+            assert llm.args.quant_config.quant_algo == QuantAlgo.NVFP4
             assert llm.args.stream_interval == stream_interval
             task = CnnDailymail(self.MODEL_NAME)
             task.evaluate(llm, streaming=True)
@@ -207,7 +207,7 @@ class TestLlama3_1_8BInstruct(LlmapiAccuracyTestHarness):
         with LLM(
                 f"{llm_models_root()}/llama-3.1-model/Llama-3.1-8B-Instruct-FP8",
                 **pytorch_config) as llm:
-            assert llm.model_config.quant_config.quant_algo == QuantAlgo.FP8
+            assert llm.args.quant_config.quant_algo == QuantAlgo.FP8
             task = GSM8K(self.MODEL_NAME)
             task.evaluate(llm)
 
@@ -244,7 +244,7 @@ class TestLlama3_1_8BInstruct(LlmapiAccuracyTestHarness):
                 tensor_parallel_size=tp_size,
                 pipeline_parallel_size=pp_size,
                 **pytorch_config) as llm:
-            assert llm.model_config.quant_config.quant_algo == QuantAlgo.FP8
+            assert llm.args.quant_config.quant_algo == QuantAlgo.FP8
             task = GSM8K(self.MODEL_NAME)
             task.evaluate(llm)
 
@@ -252,7 +252,7 @@ class TestLlama3_1_8BInstruct(LlmapiAccuracyTestHarness):
     def test_fp8_llm_sampler(self):
         model_path = f"{llm_models_root()}/llama-3.1-model/Llama-3.1-8B-Instruct-FP8"
         with LLM(model_path, max_batch_size=256) as llm:
-            assert llm.model_config.quant_config.quant_algo == QuantAlgo.FP8
+            assert llm.args.quant_config.quant_algo == QuantAlgo.FP8
 
             sampling_params = SamplingParams(
                 temperature=0.8,
@@ -347,8 +347,8 @@ class TestLlama3_1_8BInstruct(LlmapiAccuracyTestHarness):
         pytorch_config["kv_cache_config"] = KvCacheConfig(dtype="nvfp4")
         with LLM(f"{llm_models_root()}/Llama-3_1-8B-Instruct_fp8_kv_nvfp4",
                  **pytorch_config) as llm:
-            assert llm.model_config.quant_config.quant_algo == QuantAlgo.FP8
-            assert llm.model_config.quant_config.kv_cache_quant_algo == QuantAlgo.NVFP4
+            assert llm.args.quant_config.quant_algo == QuantAlgo.FP8
+            assert llm.args.quant_config.kv_cache_quant_algo == QuantAlgo.NVFP4
             task = MMLU(self.MODEL_NAME)
             task.evaluate(llm)
             task = GSM8K(self.MODEL_NAME)
@@ -544,7 +544,7 @@ class TestLlama3_2_1B(LlmapiAccuracyTestHarness):
     def test_fp8_prequantized(self):
         model_path = f"{llm_models_root()}/llama-3.2-models/Llama-3.2-1B-FP8"
         with LLM(model_path) as llm:
-            assert llm.model_config.quant_config.quant_algo == QuantAlgo.FP8
+            assert llm.args.quant_config.quant_algo == QuantAlgo.FP8
             task = CnnDailymail(self.MODEL_NAME)
             task.evaluate(llm)
 
@@ -602,7 +602,7 @@ class TestLlama3_2_3B(LlmapiAccuracyTestHarness):
     def test_fp8_prequantized(self):
         model_path = f"{llm_models_root()}/llama-3.2-models/Llama-3.2-3B-Instruct-FP8"
         with LLM(model_path) as llm:
-            assert llm.model_config.quant_config.quant_algo == QuantAlgo.FP8
+            assert llm.args.quant_config.quant_algo == QuantAlgo.FP8
             task = CnnDailymail(self.MODEL_NAME)
             task.evaluate(llm)
             task = MMLU(self.MODEL_NAME)
@@ -664,7 +664,7 @@ class TestLlama3_3_70BInstruct(LlmapiAccuracyTestHarness):
                  max_batch_size=32,
                  kv_cache_config=kv_cache_config,
                  torch_compile_config=torch_compile_config) as llm:
-            assert llm.model_config.quant_config.quant_algo == QuantAlgo.FP8
+            assert llm.args.quant_config.quant_algo == QuantAlgo.FP8
             sampling_params = SamplingParams(
                 max_tokens=256,
                 temperature=0.0,
@@ -690,7 +690,7 @@ class TestLlama3_3_70BInstruct(LlmapiAccuracyTestHarness):
                  max_batch_size=32,
                  kv_cache_config=kv_cache_config,
                  torch_compile_config=torch_compile_config) as llm:
-            assert llm.model_config.quant_config.quant_algo == QuantAlgo.NVFP4
+            assert llm.args.quant_config.quant_algo == QuantAlgo.NVFP4
             sampling_params = SamplingParams(
                 max_tokens=256,
                 temperature=0.0,
@@ -724,7 +724,7 @@ class TestLlama3_3_70BInstruct(LlmapiAccuracyTestHarness):
                   max_batch_size=32,
                   kv_cache_config=kv_cache_config,
                   torch_compile_config=torch_compile_config) as llm):
-            assert llm.model_config.quant_config.quant_algo == QuantAlgo.NVFP4
+            assert llm.args.quant_config.quant_algo == QuantAlgo.NVFP4
             sampling_params = SamplingParams(
                 max_tokens=256,
                 temperature=0.0,
@@ -815,8 +815,8 @@ class TestLlama4MaverickInstruct(LlmapiAccuracyTestHarness):
                 kv_cache_config=kv_cache_config,
                 cuda_graph_config=CudaGraphConfig()
                 if cuda_graph else None) as llm:
-            assert llm.model_config.quant_config.quant_algo == QuantAlgo.FP8
-            assert llm.model_config.quant_config.kv_cache_quant_algo == QuantAlgo.FP8
+            assert llm.args.quant_config.quant_algo == QuantAlgo.FP8
+            assert llm.args.quant_config.kv_cache_quant_algo == QuantAlgo.FP8
             task = MMLU(self.MODEL_NAME)
             task.evaluate(llm)
             task = GSM8K(self.MODEL_NAME)
@@ -839,8 +839,8 @@ class TestLlama4MaverickInstruct(LlmapiAccuracyTestHarness):
                 max_num_tokens=256,
                 cuda_graph_config=CudaGraphConfig()
                 if cuda_graph else None) as llm:
-            assert llm.model_config.quant_config.quant_algo == QuantAlgo.FP8
-            assert llm.model_config.quant_config.kv_cache_quant_algo == QuantAlgo.FP8
+            assert llm.args.quant_config.quant_algo == QuantAlgo.FP8
+            assert llm.args.quant_config.kv_cache_quant_algo == QuantAlgo.FP8
             task = MMLU(self.MODEL_NAME)
             task.evaluate(llm)
             task = GSM8K(self.MODEL_NAME)
@@ -896,7 +896,7 @@ class TestLlama4ScoutInstruct(LlmapiAccuracyTestHarness):
                 kv_cache_config=KvCacheConfig(free_gpu_memory_fraction=0.8),
                 cuda_graph_config=CudaGraphConfig()
                 if cuda_graph else None) as llm:
-            assert llm.model_config.quant_config.quant_algo == QuantAlgo.FP8
+            assert llm.args.quant_config.quant_algo == QuantAlgo.FP8
             task = MMLU(self.MODEL_NAME)
             task.evaluate(llm)
             task = GSM8K(self.MODEL_NAME)
@@ -920,8 +920,8 @@ class TestLlama4ScoutInstruct(LlmapiAccuracyTestHarness):
                 moe_expert_parallel_size=ep_size,
                 cuda_graph_config=CudaGraphConfig()
                 if cuda_graph else None) as llm:
-            assert llm.model_config.quant_config.quant_algo == QuantAlgo.NVFP4
-            assert llm.model_config.quant_config.kv_cache_quant_algo == QuantAlgo.FP8
+            assert llm.args.quant_config.quant_algo == QuantAlgo.NVFP4
+            assert llm.args.quant_config.kv_cache_quant_algo == QuantAlgo.FP8
             task = MMLU(self.MODEL_NAME)
             task.evaluate(llm)
             task = GSM8K(self.MODEL_NAME)
@@ -943,8 +943,8 @@ class TestLlama4ScoutInstruct(LlmapiAccuracyTestHarness):
                 max_num_tokens=256,
                 cuda_graph_config=CudaGraphConfig()
                 if cuda_graph else None) as llm:
-            assert llm.model_config.quant_config.quant_algo == QuantAlgo.FP8
-            assert llm.model_config.quant_config.kv_cache_quant_algo == QuantAlgo.FP8
+            assert llm.args.quant_config.quant_algo == QuantAlgo.FP8
+            assert llm.args.quant_config.kv_cache_quant_algo == QuantAlgo.FP8
             task = MMLU(self.MODEL_NAME)
             task.evaluate(llm)
             task = GSM8K(self.MODEL_NAME)
@@ -966,8 +966,8 @@ class TestLlama4ScoutInstruct(LlmapiAccuracyTestHarness):
                 max_num_tokens=256,
                 cuda_graph_config=CudaGraphConfig()
                 if cuda_graph else None) as llm:
-            assert llm.model_config.quant_config.quant_algo == QuantAlgo.NVFP4
-            assert llm.model_config.quant_config.kv_cache_quant_algo == QuantAlgo.FP8
+            assert llm.args.quant_config.quant_algo == QuantAlgo.NVFP4
+            assert llm.args.quant_config.kv_cache_quant_algo == QuantAlgo.FP8
             task = MMLU(self.MODEL_NAME)
             task.evaluate(llm)
             task = GSM8K(self.MODEL_NAME)
@@ -1005,7 +1005,7 @@ class TestMistralSmall24B(LlmapiAccuracyTestHarness):
         kv_cache_config = KvCacheConfig(free_gpu_memory_fraction=0.75)
         model_path = f"{llm_models_root()}/Mistral-Small-3.1-24B-Instruct-2503-fp8"
         with LLM(model_path, kv_cache_config=kv_cache_config) as llm:
-            assert llm.model_config.quant_config.quant_algo == QuantAlgo.FP8
+            assert llm.args.quant_config.quant_algo == QuantAlgo.FP8
             task = CnnDailymail(self.MODEL_NAME)
             task.evaluate(llm)
             task = MMLU(self.MODEL_NAME)
@@ -1032,7 +1032,7 @@ class TestMinistral8BInstruct(LlmapiAccuracyTestHarness):
         model_path = f"{llm_models_root()}/Ministral-8B-Instruct-2410-FP8"
         try:
             with LLM(model_path) as llm:
-                assert llm.model_config.quant_config.quant_algo == QuantAlgo.FP8
+                assert llm.args.quant_config.quant_algo == QuantAlgo.FP8
                 task = GSM8K(self.MODEL_NAME)
                 task.evaluate(llm)
                 task = MMLU(self.MODEL_NAME)
@@ -1080,7 +1080,7 @@ class TestGemma3_27BInstruct(LlmapiAccuracyTestHarness):
                  kv_cache_config=kv_cache_config,
                  attn_backend="FLASHINFER",
                  cuda_graph_config=None) as llm:
-            assert llm.model_config.quant_config.quant_algo == QuantAlgo.FP8
+            assert llm.args.quant_config.quant_algo == QuantAlgo.FP8
             task = CnnDailymail(self.MODEL_NAME)
             task.evaluate(llm)
             task = GSM8K(self.MODEL_NAME)
@@ -1118,7 +1118,7 @@ class TestGemma3_1BInstruct(LlmapiAccuracyTestHarness):
         prequantized_model_path = f"{llm_models_root()}/gemma/gemma-3-1b-it-fp8/"
         with LLM(prequantized_model_path,
                  kv_cache_config=kv_cache_config) as llm:
-            assert llm.model_config.quant_config.quant_algo == QuantAlgo.FP8
+            assert llm.args.quant_config.quant_algo == QuantAlgo.FP8
             task = CnnDailymail(self.MODEL_NAME)
             task.evaluate(llm)
             task = GSM8K(self.MODEL_NAME)
@@ -1335,7 +1335,7 @@ class TestMixtral8x7B(LlmapiAccuracyTestHarness):
     def test_fp8_tp2(self):
         model_path = f"{llm_models_root()}/modelopt-hf-model-hub/Mixtral-8x7B-Instruct-v0.1-fp8"
         with LLM(model_path, tensor_parallel_size=2) as llm:
-            assert llm.model_config.quant_config.quant_algo == QuantAlgo.FP8
+            assert llm.args.quant_config.quant_algo == QuantAlgo.FP8
             task = CnnDailymail(self.MODEL_NAME)
             task.evaluate(llm)
             task = MMLU(self.MODEL_NAME)
@@ -1346,7 +1346,7 @@ class TestMixtral8x7B(LlmapiAccuracyTestHarness):
     def test_nvfp4_tp2(self):
         model_path = f"{llm_models_root()}/modelopt-hf-model-hub/Mixtral-8x7B-Instruct-v0.1-fp4"
         with LLM(model_path, tensor_parallel_size=2) as llm:
-            assert llm.model_config.quant_config.quant_algo == QuantAlgo.NVFP4
+            assert llm.args.quant_config.quant_algo == QuantAlgo.NVFP4
             task = CnnDailymail(self.MODEL_NAME)
             task.evaluate(llm)
             task = MMLU(self.MODEL_NAME)
@@ -1505,7 +1505,7 @@ class TestDeepSeekV3Lite(LlmapiAccuracyTestHarness):
                  enable_attention_dp=attention_dp,
                  speculative_config=mtp_config) as llm:
 
-            assert llm.model_config.quant_config.quant_algo == QuantAlgo.FP8_BLOCK_SCALES
+            assert llm.args.quant_config.quant_algo == QuantAlgo.FP8_BLOCK_SCALES
 
             task = GSM8K(self.MODEL_NAME)
             task.evaluate(llm)
@@ -1550,7 +1550,7 @@ class TestDeepSeekV3Lite(LlmapiAccuracyTestHarness):
                 speculative_config=mtp_config,
         ) as llm:
 
-            assert llm.model_config.quant_config.quant_algo == QuantAlgo.FP8_BLOCK_SCALES
+            assert llm.args.quant_config.quant_algo == QuantAlgo.FP8_BLOCK_SCALES
 
             task = GSM8K(self.MODEL_NAME)
             task.evaluate(llm)
@@ -1575,7 +1575,7 @@ class TestDeepSeekV3Lite(LlmapiAccuracyTestHarness):
                  kv_cache_config=kv_cache_config,
                  **pytorch_config,
                  speculative_config=mtp_config) as llm:
-            assert llm.model_config.quant_config.quant_algo == QuantAlgo.FP8_BLOCK_SCALES
+            assert llm.args.quant_config.quant_algo == QuantAlgo.FP8_BLOCK_SCALES
             task = GSM8K(self.MODEL_NAME)
             task.evaluate(llm)
 
@@ -1602,7 +1602,7 @@ class TestDeepSeekV3Lite(LlmapiAccuracyTestHarness):
                  **pytorch_config,
                  enable_attention_dp=attention_dp,
                  speculative_config=mtp_config) as llm:
-            assert llm.model_config.quant_config.quant_algo == QuantAlgo.FP8_BLOCK_SCALES
+            assert llm.args.quant_config.quant_algo == QuantAlgo.FP8_BLOCK_SCALES
             task = GSM8K(self.MODEL_NAME)
             task.evaluate(llm)
 
@@ -1654,7 +1654,7 @@ class TestDeepSeekV3Lite(LlmapiAccuracyTestHarness):
                  enable_attention_dp=attention_dp,
                  speculative_config=mtp_config) as llm:
 
-            assert llm.model_config.quant_config.quant_algo == QuantAlgo.FP8_BLOCK_SCALES
+            assert llm.args.quant_config.quant_algo == QuantAlgo.FP8_BLOCK_SCALES
 
             task = GSM8K(self.MODEL_NAME)
             task.evaluate(llm)
@@ -1714,7 +1714,7 @@ class TestDeepSeekV3Lite(LlmapiAccuracyTestHarness):
                 enable_attention_dp=attention_dp,
                 speculative_config=mtp_config,
         ) as llm:
-            assert llm.model_config.quant_config.quant_algo == QuantAlgo.FP8_BLOCK_SCALES
+            assert llm.args.quant_config.quant_algo == QuantAlgo.FP8_BLOCK_SCALES
 
             task = GSM8K(self.MODEL_NAME)
             task.evaluate(llm)
@@ -1838,7 +1838,7 @@ class TestDeepSeekV3Lite(LlmapiAccuracyTestHarness):
                  **pytorch_config,
                  enable_attention_dp=attention_dp,
                  speculative_config=mtp_config) as llm:
-            assert llm.model_config.quant_config.quant_algo == QuantAlgo.NVFP4
+            assert llm.args.quant_config.quant_algo == QuantAlgo.NVFP4
 
             task = GSM8K(self.MODEL_NAME)
             task.evaluate(llm)
@@ -1877,7 +1877,7 @@ class TestDeepSeekV3Lite(LlmapiAccuracyTestHarness):
                  **pytorch_config,
                  enable_attention_dp=False,
                  speculative_config=mtp_config) as llm:
-            assert llm.model_config.quant_config.quant_algo == QuantAlgo.NVFP4
+            assert llm.args.quant_config.quant_algo == QuantAlgo.NVFP4
 
             task = GSM8K(self.MODEL_NAME)
             task.evaluate(llm)
@@ -1950,7 +1950,7 @@ class TestDeepSeekV3Lite(LlmapiAccuracyTestHarness):
                  **pytorch_config,
                  enable_attention_dp=attention_dp,
                  speculative_config=mtp_config) as llm:
-            assert llm.model_config.quant_config.quant_algo == QuantAlgo.NVFP4
+            assert llm.args.quant_config.quant_algo == QuantAlgo.NVFP4
 
             task = GSM8K(self.MODEL_NAME)
             task.evaluate(llm)
@@ -2001,9 +2001,9 @@ class TestDeepSeekV3Lite(LlmapiAccuracyTestHarness):
                  enable_attention_dp=attention_dp,
                  speculative_config=mtp_config) as llm:
             if quant_dtype == "fp8":
-                assert llm.model_config.quant_config.quant_algo == QuantAlgo.FP8_BLOCK_SCALES
+                assert llm.args.quant_config.quant_algo == QuantAlgo.FP8_BLOCK_SCALES
             elif quant_dtype == "nvfp4":
-                assert llm.model_config.quant_config.quant_algo == QuantAlgo.NVFP4
+                assert llm.args.quant_config.quant_algo == QuantAlgo.NVFP4
 
             task = GSM8K(self.MODEL_NAME)
             task.evaluate(llm)
@@ -2052,9 +2052,9 @@ class TestDeepSeekV3Lite(LlmapiAccuracyTestHarness):
                  speculative_config=mtp_config) as llm:
 
             if quant_dtype == "fp8":
-                assert llm.model_config.quant_config.quant_algo == QuantAlgo.FP8_BLOCK_SCALES
+                assert llm.args.quant_config.quant_algo == QuantAlgo.FP8_BLOCK_SCALES
             elif quant_dtype == "nvfp4":
-                assert llm.model_config.quant_config.quant_algo == QuantAlgo.NVFP4
+                assert llm.args.quant_config.quant_algo == QuantAlgo.NVFP4
 
             task = GSM8K(self.MODEL_NAME)
             task.evaluate(llm)
@@ -2300,7 +2300,7 @@ class TestDeepSeekR1(LlmapiAccuracyTestHarness):
                  speculative_config=mtp_config) as llm:
 
             assert llm.args.moe_config.backend == moe_backend
-            assert llm.model_config.quant_config.quant_algo == QuantAlgo.NVFP4
+            assert llm.args.quant_config.quant_algo == QuantAlgo.NVFP4
 
             task = MMLU(self.MODEL_NAME)
             task.evaluate(llm)
@@ -2437,7 +2437,7 @@ class TestDeepSeekR1(LlmapiAccuracyTestHarness):
                  speculative_config=mtp_config) as llm:
 
             assert llm.args.moe_config.backend == moe_backend
-            assert llm.model_config.quant_config.quant_algo == QuantAlgo.NVFP4
+            assert llm.args.quant_config.quant_algo == QuantAlgo.NVFP4
 
             task = MMLU(self.MODEL_NAME)
             task.evaluate(llm)
@@ -2509,7 +2509,7 @@ class TestDeepSeekR1(LlmapiAccuracyTestHarness):
                  max_num_tokens=512) as llm:
 
             assert llm.args.moe_config.backend == moe_backend
-            assert llm.model_config.quant_config.quant_algo == QuantAlgo.NVFP4
+            assert llm.args.quant_config.quant_algo == QuantAlgo.NVFP4
 
             task = GSM8K(self.MODEL_NAME)
             task.evaluate(llm)
@@ -2545,7 +2545,7 @@ class TestDeepSeekR1(LlmapiAccuracyTestHarness):
                  max_seq_len=5120,
                  max_num_tokens=5120) as llm:
 
-            assert llm.model_config.quant_config.quant_algo == QuantAlgo.NVFP4
+            assert llm.args.quant_config.quant_algo == QuantAlgo.NVFP4
 
             task = MMLU(self.MODEL_NAME)
             task.evaluate(llm)
@@ -2598,7 +2598,7 @@ class TestDeepSeekR1(LlmapiAccuracyTestHarness):
                  **pytorch_config,
                  enable_attention_dp=attention_dp,
                  speculative_config=mtp_config) as llm:
-            assert llm.model_config.quant_config.quant_algo == QuantAlgo.FP8_BLOCK_SCALES
+            assert llm.args.quant_config.quant_algo == QuantAlgo.FP8_BLOCK_SCALES
 
             task = MMLU(self.MODEL_NAME)
             task.evaluate(llm)
@@ -2647,7 +2647,7 @@ class TestDeepSeekR1(LlmapiAccuracyTestHarness):
                  speculative_config=mtp_config,
                  enable_chunked_prefill=True,
                  max_num_tokens=512) as llm:
-            assert llm.model_config.quant_config.quant_algo == QuantAlgo.FP8_BLOCK_SCALES
+            assert llm.args.quant_config.quant_algo == QuantAlgo.FP8_BLOCK_SCALES
 
             task = GSM8K(self.MODEL_NAME)
             task.evaluate(llm)
@@ -2975,7 +2975,7 @@ class TestGLM4_6(LlmapiAccuracyTestHarness):
                  speculative_config=mtp_config,
                  enable_chunked_prefill=chunked_prefill) as llm:
 
-            assert llm.model_config.quant_config.quant_algo == QuantAlgo.NVFP4
+            assert llm.args.quant_config.quant_algo == QuantAlgo.NVFP4
             task = GSM8K(self.MODEL_NAME)
             task.evaluate(llm)
 
@@ -3008,7 +3008,7 @@ class TestGLM4_6(LlmapiAccuracyTestHarness):
                  speculative_config=mtp_config,
                  enable_chunked_prefill=chunked_prefill) as llm:
 
-            assert llm.model_config.quant_config.quant_algo == QuantAlgo.NVFP4
+            assert llm.args.quant_config.quant_algo == QuantAlgo.NVFP4
             task = GSM8K(self.MODEL_NAME)
             task.evaluate(llm)
 
@@ -3080,7 +3080,7 @@ class TestGLM4_5Air(LlmapiAccuracyTestHarness):
                  speculative_config=mtp_config,
                  enable_chunked_prefill=chunked_prefill) as llm:
 
-            assert llm.model_config.quant_config.quant_algo == QuantAlgo.NVFP4
+            assert llm.args.quant_config.quant_algo == QuantAlgo.NVFP4
             task = GSM8K(self.MODEL_NAME)
             task.evaluate(llm)
 
@@ -3114,7 +3114,7 @@ class TestGLM4_5Air(LlmapiAccuracyTestHarness):
                  speculative_config=mtp_config,
                  enable_chunked_prefill=chunked_prefill) as llm:
 
-            assert llm.model_config.quant_config.quant_algo == QuantAlgo.NVFP4
+            assert llm.args.quant_config.quant_algo == QuantAlgo.NVFP4
             task = GSM8K(self.MODEL_NAME)
             task.evaluate(llm)
 
@@ -3156,7 +3156,7 @@ class TestKimiK2(LlmapiAccuracyTestHarness):
                  **pytorch_config,
                  enable_attention_dp=attention_dp,
                  speculative_config=mtp_config) as llm:
-            assert llm.model_config.quant_config.quant_algo == QuantAlgo.FP8_BLOCK_SCALES
+            assert llm.args.quant_config.quant_algo == QuantAlgo.FP8_BLOCK_SCALES
 
             task = MMLU(self.MODEL_NAME)
             task.evaluate(llm)
@@ -3184,7 +3184,7 @@ class TestKimiK2(LlmapiAccuracyTestHarness):
                  enable_attention_dp=True,
                  trust_remote_code=True,
                  speculative_config=None) as llm:
-            assert llm.model_config.quant_config.quant_algo == QuantAlgo.NVFP4
+            assert llm.args.quant_config.quant_algo == QuantAlgo.NVFP4
 
             task = MMLU(model_name)
             task.evaluate(llm)
@@ -3229,7 +3229,7 @@ class TestKimiK2(LlmapiAccuracyTestHarness):
                 max_batch_size=32,
                 enable_attention_dp=True,
         ) as llm:
-            assert llm.model_config.quant_config.quant_algo == QuantAlgo.NVFP4
+            assert llm.args.quant_config.quant_algo == QuantAlgo.NVFP4
 
             # Build long token sequences from dataset
             tokenizer = llm.tokenizer
@@ -3311,7 +3311,7 @@ class TestKimiK2(LlmapiAccuracyTestHarness):
                 max_batch_size=8,
                 enable_attention_dp=True,
         ) as llm:
-            assert llm.model_config.quant_config.quant_algo == QuantAlgo.NVFP4
+            assert llm.args.quant_config.quant_algo == QuantAlgo.NVFP4
 
             # Build long token sequences from dataset
             tokenizer = llm.tokenizer
@@ -3400,7 +3400,7 @@ class TestMinitron4BBaseInstruct(LlmapiAccuracyTestHarness):
     @skip_pre_ada
     def test_fp8_prequantized(self):
         with LLM(self.MODEL_PATH) as llm:
-            assert llm.model_config.quant_config.quant_algo == QuantAlgo.FP8
+            assert llm.args.quant_config.quant_algo == QuantAlgo.FP8
             task = CnnDailymail(self.MODEL_NAME)
             task.evaluate(llm)
 
@@ -3480,7 +3480,7 @@ class TestLlama3_3NemotronSuper49Bv1(LlmapiAccuracyTestHarness):
                  tensor_parallel_size=2,
                  max_seq_len=8192,
                  max_batch_size=64) as llm:
-            assert llm.model_config.quant_config.quant_algo == QuantAlgo.FP8
+            assert llm.args.quant_config.quant_algo == QuantAlgo.FP8
 
             # Run only one eval as maximal BS is not large
             task = MMLU(self.MODEL_NAME)
@@ -3507,7 +3507,7 @@ class TestLlama3_1NemotronNano8Bv1(LlmapiAccuracyTestHarness):
     def test_fp8_prequantized(self):
         model_path = f"{llm_models_root()}/Llama-3.1-Nemotron-Nano-8B-v1-FP8"
         with LLM(model_path) as llm:
-            assert llm.model_config.quant_config.quant_algo == QuantAlgo.FP8
+            assert llm.args.quant_config.quant_algo == QuantAlgo.FP8
             task = MMLU(self.MODEL_NAME)
             task.evaluate(llm)
             task = GSM8K(self.MODEL_NAME)
@@ -3560,7 +3560,7 @@ class TestNemotronUltra(LlmapiAccuracyTestHarness):
                  cuda_graph_config=CudaGraphConfig() if cuda_graph else None,
                  kv_cache_config=KvCacheConfig(
                      free_gpu_memory_fraction=0.85)) as llm:
-            assert llm.model_config.quant_config.quant_algo == QuantAlgo.FP8
+            assert llm.args.quant_config.quant_algo == QuantAlgo.FP8
             task = MMLU(self.MODEL_NAME)
             task.evaluate(llm)
             task = GSM8K(self.MODEL_NAME)
@@ -3598,7 +3598,7 @@ class TestNemotronH(LlmapiAccuracyTestHarness):
                  max_batch_size=256,
                  cuda_graph_config=CudaGraphConfig()
                  if cuda_graph else None) as llm:
-            assert llm.model_config.quant_config.quant_algo == QuantAlgo.FP8
+            assert llm.args.quant_config.quant_algo == QuantAlgo.FP8
             task = MMLU(self.MODEL_NAME)
             task.evaluate(llm)
             task = GSM8K(self.MODEL_NAME)
@@ -3648,7 +3648,7 @@ class TestNemotronH_47B_Base(LlmapiAccuracyTestHarness):
                  max_batch_size=256,
                  cuda_graph_config=CudaGraphConfig()
                  if cuda_graph else None) as llm:
-            assert llm.model_config.quant_config.quant_algo == QuantAlgo.FP8
+            assert llm.args.quant_config.quant_algo == QuantAlgo.FP8
             task = MMLU(self.MODEL_NAME)
             task.evaluate(llm)
             task = GSM8K(self.MODEL_NAME)
@@ -5379,7 +5379,7 @@ class TestDeepSeekR1LongBenchV2(LlmapiAccuracyTestHarness):
                  max_batch_size=32,
                  **pytorch_config) as llm:
 
-            assert llm.model_config.quant_config.quant_algo == QuantAlgo.NVFP4
+            assert llm.args.quant_config.quant_algo == QuantAlgo.NVFP4
 
             task = LongBenchV2(self.MODEL_NAME)
 
@@ -5826,6 +5826,6 @@ class TestMiniMaxM2(LlmapiAccuracyTestHarness):
                  max_seq_len=4096,
                  **pytorch_config,
                  enable_attention_dp=attention_dp) as llm:
-            assert llm.model_config.quant_config.quant_algo == QuantAlgo.FP8_BLOCK_SCALES
+            assert llm.args.quant_config.quant_algo == QuantAlgo.FP8_BLOCK_SCALES
             task = GSM8K(self.MODEL_NAME)
             task.evaluate(llm)

@@ -2673,6 +2673,14 @@ class TrtLlmArgs(BaseLlmArgs):
                         "The build_config is ignored for model format of TLLM_ENGINE."
                     )
                 self._load_config_from_engine(model_obj.model_dir)
+
+                # Sync runtime parameters with the engine's build config
+                # This is needed because defaults may have been applied before loading
+                self.max_batch_size = self.build_config.max_batch_size
+                self.max_input_len = self.build_config.max_input_len
+                self.max_seq_len = self.build_config.max_seq_len
+                self.max_beam_width = self.build_config.max_beam_width
+
                 runtime_defaults = self._pretrained_config.runtime_defaults
                 if runtime_defaults:
                     self.kv_cache_config.fill_empty_fields_from_runtime_defaults(
@@ -2977,6 +2985,9 @@ class TorchLlmArgs(BaseLlmArgs):
         "Only enable it if you intend to use this feature.",
         status="prototype")
 
+    # PrivateVars
+    _quant_config: Optional[QuantConfig] = PrivateAttr(default=None)
+
     disable_flashinfer_sampling: bool = Field(
         default=False,
         description=
@@ -2995,8 +3006,22 @@ class TorchLlmArgs(BaseLlmArgs):
         description="Configuration for layer-wise benchmarks calibration.",
         status="prototype")
 
+    @property
+    def quant_config(self) -> QuantConfig:
+        if self._quant_config is None:
+            self._quant_config = QuantConfig()
+        return self._quant_config
+
+    @quant_config.setter
+    def quant_config(self, value: QuantConfig):
+        self._quant_config = value
+
     # TODO: remove backend later
-    backend: Literal["pytorch"] = "pytorch"
+    backend: Literal["pytorch"] = Field(
+        default="pytorch",
+        description="The backend to use for this LLM instance.",
+        exclude_json_schema=True,
+        status="deprecated")
 
     @field_validator('load_format', mode='before')
     @classmethod
@@ -3104,6 +3129,23 @@ class TorchLlmArgs(BaseLlmArgs):
                 raise ValueError(
                     f"Failed to load MoE load balancer config: {self.moe_config.load_balancer}"
                 ) from e
+        return self
+
+    @model_validator(mode='after')
+    def sync_quant_config_with_kv_cache_config_dtype(self) -> 'TorchLlmArgs':
+        if self.kv_cache_config is None:
+            return self
+
+        assert self.quant_config is not None
+        if self.kv_cache_config.dtype == "auto":
+            return self
+        elif self.kv_cache_config.dtype == 'fp8':
+            self.quant_config.kv_cache_quant_algo = QuantAlgo.FP8
+        else:
+            logger.warning(
+                f"Cannot sync quant_config.kv_cache_quant_algo with kv_cache_config.dtype of {self.kv_cache_config.dtype}, "
+                "please update the validator")
+
         return self
 
     @model_validator(mode='after')
