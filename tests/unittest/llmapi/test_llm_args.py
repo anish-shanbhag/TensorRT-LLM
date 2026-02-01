@@ -1081,6 +1081,7 @@ class TestPydanticBestPractices:
                 "to _COMPATIBILITY_EXEMPT_FIELDS.")
 
     # Methods that shouldn't be manually defined on Pydantic models
+    # Keys are method names, values are suggestions for replacement
     _FORBIDDEN_METHODS = {
         "from_dict":
         "Construct the class directly from the dict instead, i.e. MyModel(**my_dict).",
@@ -1116,8 +1117,8 @@ class TestPydanticBestPractices:
             pytest.fail(
                 f"The following models define forbidden methods:\n" +
                 "\n".join(violations) +
-                "\n\nPydantic models should use built-in methods instead. "
-                "See: https://docs.pydantic.dev/latest/concepts/serialization/")
+                "\n\nPydantic models should follow the recommendations above instead."
+            )
 
     def test_no_mutable_default_values(self):
         """Test that LlmArgs and all nested Pydantic models do not use mutable default values directly."""
