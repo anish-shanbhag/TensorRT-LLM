@@ -975,7 +975,7 @@ class TestPydanticBestPractices:
         if annotation is object:
             return False, "bare 'object' type (use a specific type or Pydantic model)"
         if annotation is Any:
-            return False, "'Any' type (use a specific type)"
+            return False, "'Any' type (use a specific type or Pydantic model)"
 
         # Check for bare container types (missing type parameters)
         if annotation in (dict, list, tuple, set, frozenset):
