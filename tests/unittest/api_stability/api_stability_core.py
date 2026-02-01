@@ -299,10 +299,10 @@ class ClassSnapshot:
                     for field_name, field in snapshot_cls.model_fields.items():
                         if field_name.startswith("_"):
                             continue
-                    parameters[field_name] = ParamSnapshot(
-                        annotation=field.annotation,
-                        default=inspect._empty
-                        if field.is_required() else field.default)
+                        parameters[field_name] = ParamSnapshot(
+                            annotation=field.annotation,
+                            default=inspect._empty
+                            if field.is_required() else field.default)
                     methods["__init__"] = MethodSnapshot(parameters=parameters,
                                                          return_annotation=None)
                 else:

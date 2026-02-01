@@ -254,6 +254,12 @@ class QuantConfig(StrictBaseModel):
                     return True
         return False
 
+    # NOTE: this is kept for backward compatibility with external libraries (e.g., modelopt).
+    # For new code, prefer QuantConfig(**config) instead.
+    @classmethod
+    def from_dict(cls, config: dict) -> 'QuantConfig':
+        return cls(**config)
+
 
 class LayerQuantConfig(StrictBaseModel):
     """Configuration for layer-wise/mixed-precision quantization."""
@@ -321,6 +327,12 @@ class LayerQuantConfig(StrictBaseModel):
         autoq_format = ','.join(
             [algo_to_modelopt_map[item] for item in self.auto_quant_list])
         return autoq_format
+
+    # NOTE: this is kept for backward compatibility with external libraries (e.g., modelopt).
+    # For new code, prefer LayerQuantConfig(**config) instead.
+    @classmethod
+    def from_dict(cls, config: dict) -> 'LayerQuantConfig':
+        return cls(**config)
 
 
 class PretrainedConfig:

@@ -18,6 +18,7 @@ from tensorrt_llm.llmapi import (BuildConfig, CapacitySchedulerPolicy,
                                  SchedulerConfig)
 from tensorrt_llm.llmapi.llm_args import *
 from tensorrt_llm.llmapi.utils import print_traceback_on_error
+from tensorrt_llm.models.modeling_utils import LayerQuantConfig, QuantConfig
 from tensorrt_llm.plugin import PluginConfig
 
 from .test_llm import llama_model_path
@@ -911,35 +912,6 @@ def _get_all_pydantic_models_from_llm_args():
     return models
 
 
-# Fields exempt from Pydantic compatibility checks due to typing limitations or other edge cases.
-# Avoid adding to this list unless absolutely necessary, especially if a field is user-facing.
-# Keys are Pydantic model classes, values are lists of field names.
-EXEMPT_FIELDS: dict[type, list[str]] = {
-    BaseLlmArgs: [
-        "batched_logits_processor",  # abstract base class type
-        "decoding_config",  # deprecated field, typed as object
-        "model_kwargs",  # typed as Dict[str, Any] for flexibility
-        "mpi_session",  # abstract base class type
-        "tokenizer",  # uses PreTrainedTokenizerBase
-    ],
-    TorchLlmArgs: [
-        "checkpoint_loader",  # abstract base class type
-    ],
-    AutoDeployLlmArgs: [
-        "draft_checkpoint_loader",  # typed as object due to circular import
-        "transforms",  # typed as Dict[str, Dict[str, Any]] for flexibility
-        "model_kwargs",  # typed as Dict[str, Any] for flexibility
-        "tokenizer_kwargs",  # typed as Dict[str, Any] for flexibility
-    ],
-    UserProvidedDecodingConfig: [
-        "drafter",  # abstract base class type
-        "resource_manager",  # abstract base class type
-    ],
-    MoeConfig: ["load_balancer"],  # allows multiple types including dict
-    RayPlacementConfig: ["placement_groups"],  # contains Ray-specific types
-}
-
-
 def _get_qualified_name(cls: type) -> str:
     """Return the fully qualified name of a class."""
     return f"{cls.__module__}.{cls.__qualname__}"
@@ -949,6 +921,34 @@ class TestPydanticBestPractices:
     """
     Ensure that the user-facing LlmArgs and its subfields follow Pydantic best practices.
     """
+
+    # Fields exempt from Pydantic compatibility checks due to typing limitations or other edge cases.
+    # Avoid adding to this list unless absolutely necessary, especially if a field is user-facing.
+    # Keys are Pydantic model classes, values are lists of field names.
+    _COMPATIBILITY_EXEMPT_FIELDS: dict[type, list[str]] = {
+        BaseLlmArgs: [
+            "batched_logits_processor",  # abstract base class type
+            "decoding_config",  # deprecated field, typed as object
+            "model_kwargs",  # typed as Dict[str, Any] for flexibility
+            "mpi_session",  # abstract base class type
+            "tokenizer",  # uses PreTrainedTokenizerBase
+        ],
+        TorchLlmArgs: [
+            "checkpoint_loader",  # abstract base class type
+        ],
+        AutoDeployLlmArgs: [
+            "draft_checkpoint_loader",  # typed as object due to circular import
+            "transforms",  # typed as Dict[str, Dict[str, Any]] for flexibility
+            "model_kwargs",  # typed as Dict[str, Any] for flexibility
+            "tokenizer_kwargs",  # typed as Dict[str, Any] for flexibility
+        ],
+        UserProvidedDecodingConfig: [
+            "drafter",  # abstract base class type
+            "resource_manager",  # abstract base class type
+        ],
+        MoeConfig: ["load_balancer"],  # allows multiple types including dict
+        RayPlacementConfig: ["placement_groups"],  # contains Ray-specific types
+    }
 
     def _is_allowed_type(self, annotation, model_cls: type,
                          field_name: str) -> tuple[bool, str]:
@@ -968,7 +968,7 @@ class TestPydanticBestPractices:
 
         # Check if this field is exempt (check class and all parent classes)
         for cls in model_cls.__mro__:
-            if field_name in EXEMPT_FIELDS.get(cls, []):
+            if field_name in self._COMPATIBILITY_EXEMPT_FIELDS.get(cls, []):
                 return True, "exempt"
 
         # Check explicitly blocked types
@@ -1078,7 +1078,7 @@ class TestPydanticBestPractices:
                 + "\n".join(violations) +
                 "\n\nPlease use Pydantic-compatible types (primitives, Pydantic models that inherit from StrictBaseModel, "
                 "or other compatible types). If this is intentional, add the field "
-                "to EXEMPT_FIELDS.")
+                "to _COMPATIBILITY_EXEMPT_FIELDS.")
 
     # Methods that shouldn't be manually defined on Pydantic models
     _FORBIDDEN_METHODS = {
@@ -1091,6 +1091,13 @@ class TestPydanticBestPractices:
         "Use Pydantic's @field_validator or @model_validator instead.",
     }
 
+    # Classes exempt from specific forbidden methods. Avoid adding to this list unless absolutely
+    # necessary, e.g. if needed to preserve backward compatibility with external libraries
+    # Keys are method names, values are sets of class names
+    _FORBIDDEN_METHODS_EXEMPT_CLASSES = {
+        "from_dict": {QuantConfig, LayerQuantConfig},
+    }
+
     def test_no_manual_serialization_or_validation_methods(self):
         """Test that LlmArgs and all nested Pydantic models do not define manual serialization/validation methods."""
         violations = []
@@ -1098,6 +1105,9 @@ class TestPydanticBestPractices:
         for cls in _get_all_pydantic_models_from_llm_args():
             for method_name, suggestion in self._FORBIDDEN_METHODS.items():
                 if method_name in cls.__dict__:
+                    if cls in self._FORBIDDEN_METHODS_EXEMPT_CLASSES.get(
+                            method_name, set()):
+                        continue
                     violations.append(
                         f"{_get_qualified_name(cls)}.{method_name}(): {suggestion}"
                     )
