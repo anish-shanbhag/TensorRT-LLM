@@ -264,7 +264,6 @@ class QuantConfig(StrictBaseModel):
 class LayerQuantConfig(StrictBaseModel):
     """Configuration for layer-wise/mixed-precision quantization."""
 
-    # Note: quant_algo here is QuantAlgo (e.g. MIXED_PRECISION), not QuantConfig
     quant_algo: Optional[QuantAlgo] = Field(
         default=None,
         description="Quantization algorithm (typically MIXED_PRECISION).")
