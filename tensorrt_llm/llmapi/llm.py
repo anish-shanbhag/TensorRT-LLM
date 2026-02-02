@@ -20,6 +20,7 @@ from tensorrt_llm.inputs.multimodal import MultimodalInput, MultimodalParams
 from tensorrt_llm.inputs.registry import (BaseMultimodalInputProcessor,
                                           DefaultInputProcessor)
 from tensorrt_llm.llmapi import tracing
+from tensorrt_llm.llmapi.loaded_weights import LoadedWeights
 from tensorrt_llm.metrics.enums import MetricNames
 
 from .._utils import nvtx_range_debug
@@ -513,6 +514,23 @@ class BaseLLM:
                 else:
                     # Convert to shared tensor handle to reduce IPC overhead
                     multimodal_params.to_handle("multimodal_data")
+                    if (disaggregated_params is not None) and (
+                            "mrope_config"
+                            in multimodal_params.multimodal_data):
+                        # Propagate mRoPE handles during context-only P -> D so decode-only
+                        # can rebuild mrope_config without raw multimodal inputs.
+                        mrope_config = multimodal_params.multimodal_data[
+                            "mrope_config"]
+                        mrope_position_ids = mrope_config.get(
+                            "mrope_position_ids")
+                        mrope_position_deltas = mrope_config.get(
+                            "mrope_position_deltas")
+                        if (mrope_position_ids is not None
+                                and mrope_position_deltas is not None):
+                            disaggregated_params.mrope_position_ids_handle = (
+                                mrope_position_ids)
+                            disaggregated_params.mrope_position_deltas_handle = (
+                                mrope_position_deltas)
         else:
             raise TypeError(
                 f"The inputs must be type str or list of int, but got {type(inputs)}"
@@ -1146,6 +1164,27 @@ class _TorchLLM(BaseLLM):
             hf_model_dir=self._hf_model_dir,
             tokenizer=self.tokenizer,
             llm_args=self.args)
+
+    def get_loaded_weights(self) -> LoadedWeights:
+        """
+        Extract GPU weight references for reuse in a new LLM instance.
+
+        See the LoadedWeights class for more details.
+        """
+        if self._executor is None:
+            raise RuntimeError("Cannot extract weights - LLM not initialized")
+
+        # Access model through executor hierarchy
+        # TODO: Support multi-process executor (requires IPC to get model from worker)
+        if hasattr(self._executor, "engine") and hasattr(
+                self._executor.engine, "model_engine"):
+            model = self._executor.engine.model_engine.model
+        else:
+            raise NotImplementedError(
+                "get_loaded_weights() is not yet supported for this executor type. "
+                "Currently only single-process execution is supported.")
+
+        return LoadedWeights.from_model(model)
 
     def _validate_args_for_torch_backend(self, kwargs: dict) -> None:
         """Validate that users don't pass TrtLlmArgs-specific arguments when using PyTorch backend.
