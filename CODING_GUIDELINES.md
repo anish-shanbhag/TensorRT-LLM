@@ -404,7 +404,7 @@ foo.SomeClass()
 1. For interfaces that may be used outside a file, prefer docstrings over comments.
 2. Comments should be reserved for code within a function, or interfaces that are local to a file.
 
-#### Pydantic Guidelines
+### Pydantic Guidelines
 
 When defining any user-facing configuration classes (particularly `LlmArgs` or any class used in its fields), **always** use Pydantic classes rather than dataclasses or vanilla classes.
 
