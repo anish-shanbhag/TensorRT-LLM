@@ -947,7 +947,7 @@ class EagleDecodingConfig(DecodingBaseConfig):
         return self
 
     @model_validator(mode="after")
-    def validate_speculative_model(self) -> None:
+    def validate_speculative_model(self) -> 'EagleDecodingConfig':
         if self.speculative_model is None:
             raise ValueError("Draft model must be provided for EAGLE")
         return self
@@ -1535,9 +1535,11 @@ class SchedulerConfig(StrictBaseModel, PybindMirror):
     context_chunking_policy: Optional[ContextChunkingPolicy] = Field(
         default=None, description="The context chunking policy to use")
 
-    dynamic_batch_config: DynamicBatchConfig = Field(
-        default_factory=DynamicBatchConfig,
-        description="The dynamic batch config to use")
+    dynamic_batch_config: Optional[DynamicBatchConfig] = Field(
+        default=None,
+        description=
+        "The dynamic batch config to use. This only applies for the TensorRT backend and "
+        "cannot currently be used with the PyTorch backend.")
 
     def _to_pybind(self):
         return _SchedulerConfig(
@@ -2409,11 +2411,12 @@ class TrtLlmArgs(BaseLlmArgs):
         ExtendedRuntimePerfKnobConfig] = Field(
             default=None, description="Extended runtime perf knob config.")
 
-    quant_config: QuantConfig = Field(default_factory=QuantConfig,
-                                      description="Quantization config.")
-
+    # Quantization and calibration configurations
     calib_config: CalibConfig = Field(default_factory=CalibConfig,
                                       description="Calibration config.")
+
+    quant_config: QuantConfig = Field(default_factory=QuantConfig,
+                                      description="Quantization config.")
 
     embedding_parallel_mode: Literal[
         'NONE', 'SHARDING_ALONG_VOCAB', 'SHARDING_ALONG_HIDDEN'] = Field(
@@ -2630,7 +2633,6 @@ class TrtLlmArgs(BaseLlmArgs):
                         "The build_config is ignored for model format of TLLM_ENGINE."
                     )
                 self._load_config_from_engine(model_obj.model_dir)
-
                 runtime_defaults = self._pretrained_config.runtime_defaults
                 if runtime_defaults:
                     self.kv_cache_config.fill_empty_fields_from_runtime_defaults(
@@ -2654,9 +2656,8 @@ class TrtLlmArgs(BaseLlmArgs):
         This validator runs AFTER validate_model_format_misc so that when
         loading from an engine, we have the real build_config loaded.
         """
-        assert isinstance(
-            self.build_config, BuildConfig
-        ), f"build_config is not initialized: {self.build_config}"
+        if self.build_config is None:
+            raise ValueError("build_config is not initialized")
 
         # These can be lower than build_config limits
         for field in ("max_batch_size", "max_num_tokens"):
