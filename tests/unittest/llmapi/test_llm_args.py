@@ -1085,6 +1085,8 @@ class TestPydanticBestPractices:
     _FORBIDDEN_METHODS = {
         "from_dict":
         "Construct the class directly from the dict instead, i.e. MyModel(**my_dict).",
+        "from_kwargs":
+        "Construct the class directly from the kwargs instead, i.e. MyModel(**kwargs).",
         "to_dict": "Use Pydantic's model_dump() instead.",
         "validate":
         "Use Pydantic's @field_validator or @model_validator instead.",

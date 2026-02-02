@@ -438,7 +438,7 @@ When defining any user-facing configuration classes (particularly `LlmArgs` or a
   - Bad: `MyModel.to_dict()`
   - Note: you can override `model_dump()` to customize its behavior, but avoid doing so unless absolutely necessary.
 - Avoid defining `from_dict()` / `from_kwargs()` methods - prefer constructing the class directly from arguments.
-  - Good: `MyModel(**kwargs)`
+  - Good: `MyModel(**kwargs)`, `MyModel(**my_dict)`
   - Bad: `MyModel.from_dict(kwargs)`, `MyModel.from_kwargs(kwargs)`
 
 #### Docstring Syntax
