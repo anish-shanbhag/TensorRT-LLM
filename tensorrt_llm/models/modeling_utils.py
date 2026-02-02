@@ -255,10 +255,19 @@ class QuantConfig(StrictBaseModel):
         return False
 
     # NOTE: this is kept for backward compatibility with external libraries (e.g., modelopt).
-    # For new code, prefer QuantConfig(**config) instead.
+    # For new code, prefer directly using QuantConfig(**config) instead.
     @classmethod
     def from_dict(cls, config: dict) -> 'QuantConfig':
-        return cls(**config)
+        """Create a QuantConfig instance from a dict.
+
+        Args:
+            config (dict): The dict used to create QuantConfig.
+
+        Returns:
+            tensorrt_llm.models.modeling_utils.QuantConfig: The QuantConfig created from dict.
+        """
+        obj = cls(**config)
+        return obj
 
 
 class LayerQuantConfig(StrictBaseModel):
@@ -328,7 +337,7 @@ class LayerQuantConfig(StrictBaseModel):
         return autoq_format
 
     # NOTE: this is kept for backward compatibility with external libraries (e.g., modelopt).
-    # For new code, prefer LayerQuantConfig(**config) instead.
+    # For new code, prefer directly using LayerQuantConfig(**config) instead.
     @classmethod
     def from_dict(cls, config: dict) -> 'LayerQuantConfig':
         return cls(**config)
