@@ -434,9 +434,9 @@ When defining any user-facing configuration classes (particularly `LlmArgs` or a
 
 **Serialization:**
 - Avoid defining `to_dict()` methods - prefer Pydantic's built-in `model_dump()` to convert to a dictionary.
-  - Note: you can override `model_dump()` to customize its behavior, but avoid doing so unless absolutely necessary.
   - Good: `MyModel.model_dump()`
   - Bad: `MyModel.to_dict()`
+  - Note: you can override `model_dump()` to customize its behavior, but avoid doing so unless absolutely necessary.
 - Avoid defining `from_dict()` / `from_kwargs()` methods - prefer constructing the class directly from arguments.
   - Good: `MyModel(**kwargs)`
   - Bad: `MyModel.from_dict(kwargs)`, `MyModel.from_kwargs(kwargs)`
