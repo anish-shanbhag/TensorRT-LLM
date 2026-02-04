@@ -322,7 +322,40 @@ class ZeroMqQueue:
 
     def _prepare_data(self, obj: Any) -> bytes:
         """Serialize object and optionally add HMAC signature."""
-        data = pickle.dumps(obj)  # nosec B301
+        # DEBUG: log what we're pickling
+        # Log CompletionOutput specifically to compare branch vs main
+        if type(obj).__name__ == "CompletionOutput":
+            inc_states = getattr(obj, "_incremental_states", "NOT_FOUND")
+            logger.warning(
+                f"[DEBUG] Pickling CompletionOutput, _incremental_states={inc_states}, type={type(inc_states)}"
+            )
+        try:
+            data = pickle.dumps(obj)  # nosec B301
+        except TypeError as e:
+            logger.error(
+                f"[DEBUG] pickle.dumps FAILED for object type {type(obj)}: {e}")
+            # If it's a list, inspect contents
+            if isinstance(obj, list):
+                logger.error(f"[DEBUG] List has {len(obj)} items")
+                for i, item in enumerate(obj[:5]):  # First 5 items
+                    logger.error(
+                        f"[DEBUG]   item[{i}]: type={type(item).__name__}")
+                    if type(item).__name__ == "CompletionOutput":
+                        inc_states = getattr(item, "_incremental_states",
+                                             "NOT_FOUND")
+                        logger.error(
+                            f"[DEBUG]     _incremental_states={inc_states}")
+                        # Check if it has __getstate__
+                        logger.error(
+                            f"[DEBUG]     has __getstate__: {hasattr(item, '__getstate__')}"
+                        )
+            if hasattr(obj, "__dict__"):
+                logger.error(f"[DEBUG] object __dict__: {obj.__dict__}")
+            if hasattr(obj, "__slots__"):
+                for slot in obj.__slots__:
+                    val = getattr(obj, slot, None)
+                    logger.error(f"[DEBUG]   slot {slot}: type={type(val)}")
+            raise
         if self.use_hmac_encryption:
             return self._sign_data(data)
         return data
