@@ -3256,8 +3256,17 @@ def update_llm_args_with_extra_options(llm_args: Dict,
     if extra_llm_api_options is not None:
         with open(extra_llm_api_options, 'r') as f:
             llm_args_dict = yaml.safe_load(f)
+            # DEBUG: Check if num_postprocess_workers is in the YAML
+            logger.warning(f"[DEBUG] YAML config loaded: {llm_args_dict}")
+            logger.warning(
+                f"[DEBUG] num_postprocess_workers in YAML: {llm_args_dict.get('num_postprocess_workers')}"
+            )
             llm_args = update_llm_args_with_extra_dict(llm_args, llm_args_dict,
                                                        extra_llm_api_options)
+            # DEBUG: Check final value after merging
+            logger.warning(
+                f"[DEBUG] Final num_postprocess_workers: {llm_args.get('num_postprocess_workers')}"
+            )
     return llm_args
 
 

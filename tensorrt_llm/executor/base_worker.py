@@ -926,6 +926,12 @@ def _send_rsp(
     else:
         sampling_params, postproc_params = _get_params_for_first_rsp(
             worker, response.client_id)
+        result_streaming = worker._results.get(response.client_id,
+                                               None)._streaming
+        # DEBUG: Log streaming value being sent to postproc worker
+        logger.warning(
+            f"[DEBUG] PostprocWorker.Input: client_id={response.client_id}, streaming={result_streaming}"
+        )
         inp = PostprocWorker.Input(
             response,
             # sampling_params is necessary for creating fake GenerationResult
@@ -934,7 +940,7 @@ def _send_rsp(
             # Request.
             sampling_params=sampling_params,
             postproc_params=postproc_params,
-            streaming=worker._results.get(response.client_id, None)._streaming)
+            streaming=result_streaming)
 
         pid = response.client_id % worker.postproc_config.num_postprocess_workers
 

@@ -13,6 +13,7 @@ import torch
 import torch.nn.functional as F
 
 from tensorrt_llm.llmapi import tracing
+from tensorrt_llm.logger import logger
 
 try:
     pass
@@ -141,6 +142,29 @@ class CompletionOutput:
                                                 repr=False)
     # the result of result_handler passed to postprocess workers
     _postprocess_result: Any = None
+
+    def __getstate__(self):
+        # Exclude _incremental_states which contains unpicklable DecodeStream objects
+        inc_states = getattr(self, '_incremental_states', 'NOT_FOUND')
+        logger.warning(
+            f"[DEBUG] CompletionOutput.__getstate__ CALLED, _incremental_states type={type(inc_states)}, value={inc_states}"
+        )
+        state = {
+            slot: getattr(self, slot)
+            for slot in self.__slots__ if slot != "_incremental_states"
+        }
+        # Log what we're returning to make sure it's all picklable
+        for slot, val in state.items():
+            logger.warning(
+                f"[DEBUG]   __getstate__ slot {slot}: type={type(val).__name__}"
+            )
+        return state
+
+    def __setstate__(self, state):
+        for slot, value in state.items():
+            object.__setattr__(self, slot, value)
+        # Reset _incremental_states since it's process-local streaming state
+        object.__setattr__(self, "_incremental_states", None)
 
     @property
     def length(self) -> int:
@@ -624,6 +648,10 @@ class DetokenizedGenerationResultBase(GenerationResultBase):
         )
         self.tokenizer = tokenizer
         self._streaming = streaming
+        # DEBUG: Log what streaming value is received in postproc worker
+        logger.warning(
+            f"[DEBUG] DetokenizedGenerationResultBase.__init__: id={id}, streaming={streaming}"
+        )
 
     def _handle_response(self, response: "GenerationExecutor.Response"):
         GenerationResultBase._handle_response(self, response)
@@ -641,6 +669,15 @@ class DetokenizedGenerationResultBase(GenerationResultBase):
         if self.sampling_params.detokenize and self.tokenizer is not None:
             for beam_output in self.outputs:
                 beam_output._last_text_len = len(beam_output.text)
+                # DEBUG: Log streaming decision factors ALWAYS
+                has_decode_incr = hasattr(self.tokenizer,
+                                          'decode_incrementally')
+                use_incremental = has_decode_incr and self._streaming and not self.sampling_params.use_beam_search
+                # Log on first response only (when _incremental_states is None)
+                if beam_output._incremental_states is None:
+                    logger.warning(
+                        f"[DEBUG] _streaming={self._streaming}, has_decode_incr={has_decode_incr}, use_beam_search={self.sampling_params.use_beam_search}, use_incremental={use_incremental}"
+                    )
                 if hasattr(
                         self.tokenizer, 'decode_incrementally'
                 ) and self._streaming and not self.sampling_params.use_beam_search:
@@ -709,6 +746,10 @@ class GenerationResult(GenerationResultBase):
         )
         self._generation_request = generation_request
         self._streaming = generation_request.streaming
+        # DEBUG: Log what streaming value is set from request
+        logger.warning(
+            f"[DEBUG] GenerationResult.__init__: request_id={generation_request.id}, streaming={generation_request.streaming}"
+        )
         self.disaggregated_params = disaggregated_params
         # minimal sampling params needed for logprob calculation
         self._logprob_params = logprob_params

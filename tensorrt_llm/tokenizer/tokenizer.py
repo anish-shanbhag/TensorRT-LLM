@@ -251,6 +251,8 @@ class TransformersTokenizer(TokenizerBase):
         clean_up_tokenization_spaces: Optional[bool] = None
     ) -> Tuple[str, dict]:
         if states is None:
+            from tensorrt_llm.logger import logger
+            logger.warning(f"[DEBUG] hf_decode_incrementally: CREATING NEW DecodeStream (this makes _incremental_states unpicklable)")
             states = {
                 'decode_stream':
                 DecodeStream(skip_special_tokens=skip_special_tokens)

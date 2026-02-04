@@ -243,8 +243,15 @@ def worker_main(
                 q.put(None)
 
     postprocess_worker_futures = []
+    # DEBUG: log postproc config
+    logger.warning(
+        f"[DEBUG] postproc_worker_config.enabled={postproc_worker_config.enabled}, num={postproc_worker_config.num_postprocess_workers}"
+    )
     if is_leader and postproc_worker_config.enabled:
         logger_debug(f"initiate postprocess workers...", "yellow")
+        logger.warning(
+            f"[DEBUG] SPAWNING {postproc_worker_config.num_postprocess_workers} postprocess workers"
+        )
 
         proxy_result_queue: tuple[
             str, Optional[bytes]] = worker_queues.result_queue_addr
